@@ -71,7 +71,10 @@ async function rest(shop, token, endpoint, method = 'GET', body = null) {
   };
   if (body) opts.body = JSON.stringify(body);
   const r = await fetch(`https://${shop}/admin/api/2024-10/${endpoint}`, opts);
-  return r.json();
+  const text = await r.text();
+  if (!text) throw new Error(`HTTP ${r.status} — empty response. App may need reinstalling to get new scopes.`);
+  try { return JSON.parse(text); }
+  catch (e) { throw new Error(`HTTP ${r.status}: ${text.slice(0, 300)}`); }
 }
 
 function verifyHmac(query) {
