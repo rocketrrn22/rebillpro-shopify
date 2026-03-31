@@ -460,9 +460,9 @@ app.post('/api/selling-plans/create', requireAuth, async (req, res) => {
     const merchantCode = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     const count = parseInt(intervalCount) || 1;
     const pct = parseFloat(discount) || 0;
+    const planName = `Delivery every ${count} ${interval.toLowerCase()}${count > 1 ? 's' : ''}`;
 
-    // Step 1 — create the group (sellingPlans removed from input in API 2025-01)
-    const createMutation = `
+    const mutation = `
       mutation sellingPlanGroupCreate($input: SellingPlanGroupInput!) {
         sellingPlanGroupCreate(input: $input) {
           sellingPlanGroup { id name merchantCode }
@@ -470,39 +470,23 @@ app.post('/api/selling-plans/create', requireAuth, async (req, res) => {
         }
       }
     `;
-    const groupResult = await gql(req.shop, req.token, createMutation, {
-      input: { name, merchantCode, options: ['Delivery every'] }
-    });
-    if (groupResult.sellingPlanGroupCreate.userErrors?.length) {
-      throw new Error(groupResult.sellingPlanGroupCreate.userErrors[0].message);
-    }
-    const groupId = groupResult.sellingPlanGroupCreate.sellingPlanGroup.id;
-
-    // Step 2 — add the selling plan to the group
-    const planName = `Delivery every ${count} ${interval.toLowerCase()}${count > 1 ? 's' : ''}`;
-    const addPlanMutation = `
-      mutation sellingPlanGroupAddSellingPlans($id: ID!, $sellingPlans: [SellingPlanInput!]!) {
-        sellingPlanGroupAddSellingPlans(id: $id, sellingPlans: $sellingPlans) {
-          sellingPlans { id name }
-          userErrors { field message }
-        }
-      }
-    `;
-    const planResult = await gql(req.shop, req.token, addPlanMutation, {
-      id: groupId,
+    const input = {
+      name,
+      merchantCode,
+      options: ['Delivery every'],
       sellingPlans: [{
         name: planName,
         options: [`${count} ${interval.charAt(0) + interval.slice(1).toLowerCase()}`],
-        category: 'SUBSCRIPTION',
         billingPolicy: { recurring: { interval: interval.toUpperCase(), intervalCount: count } },
-        deliveryPolicy: { recurring: { interval: interval.toUpperCase(), intervalCount: count, anchors: [] } },
+        deliveryPolicy: { recurring: { interval: interval.toUpperCase(), intervalCount: count } },
         pricingPolicies: [{ fixed: { adjustmentType: 'PERCENTAGE', adjustmentValue: { percentage: pct } } }]
       }]
-    });
-    if (planResult.sellingPlanGroupAddSellingPlans.userErrors?.length) {
-      throw new Error(planResult.sellingPlanGroupAddSellingPlans.userErrors[0].message);
+    };
+    const result = await gql(req.shop, req.token, mutation, { input });
+    if (result.sellingPlanGroupCreate.userErrors?.length) {
+      throw new Error(result.sellingPlanGroupCreate.userErrors[0].message);
     }
-    res.json({ success: true, group: groupResult.sellingPlanGroupCreate.sellingPlanGroup });
+    res.json({ success: true, group: result.sellingPlanGroupCreate.sellingPlanGroup });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
