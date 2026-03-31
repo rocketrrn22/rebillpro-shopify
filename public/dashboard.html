@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RebillPro — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root{--bg:#080a0d;--s1:#0e1116;--s2:#141820;--s3:#1b2030;--border:#1e2535;--border2:#283046;--sh:#96bf48;--sg:rgba(150,191,72,0.1);--green:#22c55e;--gg:rgba(34,197,94,0.1);--red:#f43f5e;--rg:rgba(244,63,94,0.1);--amber:#f59e0b;--ag:rgba(245,158,11,0.1);--text:#e2e8f0;--text2:#8892a4;--text3:#3d4a5c;--font:'Instrument Sans',sans-serif;--mono:'Fira Code',monospace}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 70% 40% at 20% 0%,rgba(150,191,72,0.04) 0%,transparent 60%);pointer-events:none;z-index:0}
+.app{display:flex;min-height:100vh;position:relative;z-index:1}
+/* SIDEBAR */
+.sidebar{width:215px;background:var(--s1);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:50}
+.logo-wrap{padding:18px 15px 15px;border-bottom:1px solid var(--border)}
+.logo{font-size:16px;font-weight:700;display:flex;align-items:center;gap:7px}
+.logo-icon{width:24px;height:24px;background:var(--sg);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:12px}
+.logo span{color:var(--sh)}
+.shop-name{font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nav{padding:8px 7px;flex:1}
+.ni{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:7px;cursor:pointer;color:var(--text2);font-size:13px;font-weight:500;transition:all 0.12s;margin-bottom:1px;position:relative}
+.ni:hover{background:var(--s2);color:var(--text)}
+.ni.active{background:var(--sg);color:var(--sh)}
+.ni.active::before{content:'';position:absolute;left:0;top:22%;bottom:22%;width:2px;background:var(--sh);border-radius:0 2px 2px 0}
+.ni-icon{font-size:13px;width:14px;text-align:center;opacity:0.7}
+.nb{margin-left:auto;background:var(--red);color:#fff;font-size:9px;font-family:var(--mono);padding:1px 5px;border-radius:8px}
+.sidebar-bottom{padding:11px;border-top:1px solid var(--border)}
+.conn{display:flex;align-items:center;gap:7px;padding:8px 10px;background:var(--s2);border:1px solid var(--border);border-radius:7px;font-size:11px;margin-bottom:7px}
+.dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.dot.on{background:var(--sh);box-shadow:0 0 5px var(--sh);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.4}}
+/* MAIN */
+.main{margin-left:215px;flex:1}
+.topbar{height:50px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 22px;background:rgba(8,10,13,0.85);backdrop-filter:blur(16px);position:sticky;top:0;z-index:40}
+.page-title{font-size:14px;font-weight:600}
+.topbar-right{display:flex;gap:7px}
+.content{padding:20px 22px}
+/* PAGES */
+.page{display:none}
+.page.active{display:block;animation:fu 0.25s ease}
+@keyframes fu{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:18px}
+.stat{background:var(--s1);border:1px solid var(--border);border-radius:11px;padding:17px 19px;position:relative;overflow:hidden}
+.stat::after{content:'';position:absolute;top:-15px;right:-15px;width:55px;height:55px;border-radius:50%;opacity:0.5}
+.stat.sh::after{background:var(--sg)}
+.stat.g::after{background:var(--gg)}
+.stat.r::after{background:var(--rg)}
+.stat.a::after{background:var(--ag)}
+.sl{font-size:10px;color:var(--text2);font-family:var(--mono);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px}
+.sv{font-size:22px;font-weight:700;letter-spacing:-0.5px}
+.sv.sh{color:var(--sh)}.sv.g{color:var(--green)}.sv.r{color:var(--red)}.sv.a{color:var(--amber)}
+.ss{font-size:11px;color:var(--text3);margin-top:2px}
+/* CARDS */
+.card{background:var(--s1);border:1px solid var(--border);border-radius:11px;overflow:hidden;margin-bottom:16px}
+.card-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)}
+.card-title{font-size:13px;font-weight:600;display:flex;align-items:center;gap:7px}
+.pill{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;background:var(--s3);color:var(--text2)}
+/* TOOLBAR */
+.toolbar{display:flex;gap:7px;padding:10px 18px;border-bottom:1px solid var(--border);align-items:center;flex-wrap:wrap}
+.sw{position:relative}
+.sw input{background:var(--s2);border:1px solid var(--border2);border-radius:6px;padding:7px 10px 7px 27px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;width:200px;transition:border-color 0.2s}
+.sw input:focus{border-color:var(--sh)}
+.sw::before{content:'⌕';position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px;pointer-events:none}
+.ftab{background:var(--s2);border:1px solid var(--border);border-radius:5px;padding:6px 11px;font-size:11px;font-family:var(--mono);color:var(--text2);cursor:pointer;transition:all 0.12s;text-transform:uppercase;letter-spacing:0.4px}
+.ftab:hover{color:var(--text)}
+.ftab.active{background:var(--sg);border-color:var(--sh);color:var(--sh)}
+/* TABLE */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+thead tr{border-bottom:1px solid var(--border)}
+th{padding:9px 17px;text-align:left;font-size:9px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:1.2px}
+tbody tr{border-bottom:1px solid rgba(30,37,53,0.5);transition:background 0.1s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:rgba(255,255,255,0.01)}
+td{padding:12px 17px;font-size:13px;vertical-align:middle}
+/* TAGS */
+.tag{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600;font-family:var(--mono)}
+.tag.g{background:var(--gg);color:var(--green);border:1px solid rgba(34,197,94,0.2)}
+.tag.r{background:var(--rg);color:var(--red);border:1px solid rgba(244,63,94,0.2)}
+.tag.a{background:var(--ag);color:var(--amber);border:1px solid rgba(245,158,11,0.2)}
+.tag.sh{background:var(--sg);color:var(--sh);border:1px solid rgba(150,191,72,0.2)}
+.tag.gray{background:var(--s3);color:var(--text2);border:1px solid var(--border2)}
+/* CUST CELL */
+.cc{display:flex;align-items:center;gap:9px}
+.av{width:29px;height:29px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;flex-shrink:0}
+.cn{font-weight:600;font-size:13px}
+.ce{font-size:11px;color:var(--text2);font-family:var(--mono);margin-top:1px}
+.act{display:flex;gap:5px;align-items:center}
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:7px;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all 0.15s;white-space:nowrap}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+.btn-sh{background:var(--sh);color:#fff}
+.btn-sh:hover:not(:disabled){background:#aace5a;transform:translateY(-1px)}
+.btn-ghost{background:var(--s2);color:var(--text2);border:1px solid var(--border2)}
+.btn-ghost:hover:not(:disabled){color:var(--text)}
+.btn-red{background:var(--rg);color:var(--red);border:1px solid rgba(244,63,94,0.2)}
+.btn-red:hover:not(:disabled){background:rgba(244,63,94,0.2)}
+.btn-sm{padding:6px 11px;font-size:12px}
+.btn-xs{padding:4px 9px;font-size:11px}
+.btn-lg{padding:12px 20px;font-size:14px;width:100%;justify-content:center}
+/* MODAL */
+.mo{position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:200;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);animation:fi 0.18s ease}
+@keyframes fi{from{opacity:0}to{opacity:1}}
+.md{background:var(--s1);border:1px solid var(--border2);border-radius:15px;padding:26px;width:100%;max-width:450px;animation:mu 0.2s ease;max-height:90vh;overflow-y:auto}
+@keyframes mu{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.md h3{font-size:15px;font-weight:700;margin-bottom:5px}
+.md-sub{color:var(--text2);font-size:13px;line-height:1.6;margin-bottom:18px}
+.md-act{display:flex;gap:7px;justify-content:flex-end;margin-top:18px}
+.fg{margin-bottom:12px}
+.fl{display:block;font-size:10px;color:var(--text2);font-family:var(--mono);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:5px}
+.fi{width:100%;background:var(--s2);border:1px solid var(--border2);border-radius:7px;padding:9px 11px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;transition:border-color 0.2s}
+.fi:focus{border-color:var(--sh)}
+select.fi{cursor:pointer}
+.fr{display:flex;gap:9px}
+.fr .fg{flex:1}
+.info{background:var(--sg);border:1px solid rgba(150,191,72,0.2);border-radius:8px;padding:11px;font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:12px}
+.info strong{color:var(--sh)}
+/* PROGRESS */
+.pw{margin:12px 0}
+.pr{display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:5px}
+.pt{height:4px;background:var(--s3);border-radius:2px;overflow:hidden}
+.pf{height:100%;background:linear-gradient(90deg,var(--sh),#7fb227);border-radius:2px;transition:width 0.4s}
+/* CHART */
+.cg{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:16px}
+.cc2{background:var(--s1);border:1px solid var(--border);border-radius:11px;padding:17px}
+.cc2 h3{font-size:13px;font-weight:600;color:var(--text2);margin-bottom:12px}
+.ch{position:relative;height:185px}
+/* SPIN */
+.spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,0.15);border-top-color:rgba(255,255,255,0.8);border-radius:50%;animation:rot 0.65s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+/* TOAST */
+.tw2{position:fixed;bottom:18px;right:18px;z-index:300;display:flex;flex-direction:column;gap:6px}
+.toast{background:var(--s2);border:1px solid var(--border2);border-radius:9px;padding:10px 13px;font-size:13px;display:flex;align-items:center;gap:8px;animation:tIn 0.25s ease,tOut 0.25s ease 3.75s forwards;box-shadow:0 8px 32px rgba(0,0,0,0.5);max-width:310px}
+.toast.s{border-color:rgba(34,197,94,0.3)}
+.toast.e{border-color:rgba(244,63,94,0.3)}
+.toast.w{border-color:rgba(245,158,11,0.3)}
+@keyframes tIn{from{opacity:0;transform:translateX(15px)}to{opacity:1;transform:translateX(0)}}
+@keyframes tOut{from{opacity:1}to{opacity:0}}
+.empty{text-align:center;padding:44px 20px;color:var(--text3)}
+.empty h4{font-size:14px;color:var(--text2);margin-bottom:5px}
+code{background:var(--s3);color:var(--sh);padding:2px 6px;border-radius:4px;font-family:var(--mono);font-size:11px}
+@media(max-width:1100px){.stats-row{grid-template-columns:repeat(2,1fr)}.cg{grid-template-columns:1fr}}
+@media(max-width:768px){.sidebar{display:none}.main{margin-left:0}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="sidebar">
+    <div class="logo-wrap">
+      <div class="logo"><div class="logo-icon">🛍</div>Rebill<span>Pro</span></div>
+      <div class="shop-name" id="shopName">Loading...</div>
+    </div>
+    <nav class="nav">
+      <div class="ni active" onclick="nav('dashboard',this)"><span class="ni-icon">⬛</span>Dashboard</div>
+      <div class="ni" onclick="nav('customers',this)"><span class="ni-icon">◈</span>Customers</div>
+      <div class="ni" onclick="nav('subscriptions',this)"><span class="ni-icon">◷</span>Subscriptions <span class="nb" id="subBadge">0</span></div>
+      <div class="ni" onclick="nav('charge',this)"><span class="ni-icon">⚡</span>Charge Now</div>
+      <div class="ni" onclick="nav('orders',this)"><span class="ni-icon">▤</span>Orders</div>
+      <div class="ni" onclick="nav('analytics',this)"><span class="ni-icon">▲</span>Analytics</div>
+      <div class="ni" onclick="nav('selling-plans',this)"><span class="ni-icon">◫</span>Selling Plans</div>
+      <div class="ni" onclick="nav('webhooks',this)"><span class="ni-icon">⌘</span>Webhooks</div>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="conn"><div class="dot on"></div><span style="font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="connLabel">Connected</span></div>
+      <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;font-size:11px" onclick="window.location='/'">← Change Store</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="page-title" id="pageTitle">Dashboard</div>
+      <div class="topbar-right">
+        <button class="btn btn-ghost btn-sm" onclick="refreshAll()">↻ Refresh</button>
+        <button class="btn btn-sh btn-sm" onclick="nav('charge',null)">⚡ Charge Now</button>
+      </div>
+    </div>
+    <div class="content">
+
+      <!-- DASHBOARD -->
+      <div class="page active" id="page-dashboard">
+        <div class="stats-row">
+          <div class="stat sh"><div class="sl">Total Customers</div><div class="sv sh" id="ds-c">—</div><div class="ss">in your store</div></div>
+          <div class="stat sh"><div class="sl">With Saved Card</div><div class="sv sh" id="ds-card">—</div><div class="ss">rebillable now</div></div>
+          <div class="stat g"><div class="sl">Active Subscriptions</div><div class="sv g" id="ds-sub">—</div><div class="ss">auto-billing</div></div>
+          <div class="stat r"><div class="sl">Total Orders</div><div class="sv r" id="ds-ord">—</div><div class="ss">all time</div></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-title">Recent Orders <span class="pill" id="dashOrdCount">0</span></div><button class="btn btn-ghost btn-sm" onclick="loadOrders()">↻</button></div>
+          <div class="tw"><table><thead><tr><th>Customer</th><th>Amount</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody id="dashOrdTb"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- CUSTOMERS -->
+      <div class="page" id="page-customers">
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">Customers <span class="pill" id="custCount">0</span></div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-ghost btn-sm" onclick="exportCSV()">↓ CSV</button>
+              <button class="btn btn-ghost btn-sm" onclick="loadCustomers()">↻</button>
+              <button class="btn btn-sh btn-sm" onclick="nav('charge',null)">⚡ Bulk</button>
+            </div>
+          </div>
+          <div class="toolbar">
+            <div class="sw"><input type="text" placeholder="Search..." oninput="filterC(this.value)"></div>
+            <div class="ftab active" onclick="setCF('all',this)">All</div>
+            <div class="ftab" onclick="setCF('card',this)">Has Card</div>
+            <div class="ftab" onclick="setCF('nocard',this)">No Card</div>
+          </div>
+          <div class="tw"><table><thead><tr><th>Customer</th><th>Payment Method</th><th>Orders</th><th>Spent</th><th>Actions</th></tr></thead><tbody id="custTb"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- SUBSCRIPTIONS -->
+      <div class="page" id="page-subscriptions">
+        <div id="subScopeWarn" style="display:none;background:var(--ag);border:1px solid rgba(245,158,11,0.3);border-radius:11px;padding:12px 18px;margin-bottom:14px;font-size:12px;color:var(--text2);line-height:1.6">
+          <strong style="color:var(--amber)">⚠ Subscription API scope not available</strong> — The <code>read_own_subscription_contracts</code> scope may not be approved for your app yet. <a href="https://shopify.dev/docs/apps/selling-strategies/subscriptions" target="_blank" style="color:var(--sh)">Apply for access ↗</a>
+        </div>
+        <div style="background:linear-gradient(135deg,var(--sg),transparent);border:1px solid rgba(150,191,72,0.15);border-radius:11px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div><h3 style="font-size:13px;font-weight:600;margin-bottom:2px">Active Subscriptions</h3><p style="font-size:12px;color:var(--text2)">Bill all active subscribers at once with one click</p></div>
+          <button class="btn btn-sh" onclick="billAll()"><span id="billAllTxt">⚡ Bill All Now</span></button>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-title">Subscriptions <span class="pill" id="subCount">0</span></div><button class="btn btn-ghost btn-sm" onclick="loadSubs()">↻</button></div>
+          <div class="tw"><table><thead><tr><th>Customer</th><th>Amount</th><th>Frequency</th><th>Next Bill</th><th>Status</th><th>Actions</th></tr></thead><tbody id="subTb"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- CHARGE NOW -->
+      <div class="page" id="page-charge">
+        <div style="background:var(--s1);border:1px solid var(--border);border-radius:11px;padding:20px;margin-bottom:16px">
+          <h3 style="font-size:14px;font-weight:600;margin-bottom:4px">⚡ Charge Customers</h3>
+          <p style="font-size:12px;color:var(--text2);margin-bottom:18px;line-height:1.5">Charge one customer or all customers with a saved card. Uses Shopify Payments — no third-party fees.</p>
+          <div class="fr" style="margin-bottom:12px">
+            <div class="fg"><label class="fl">Amount (cents, e.g. 2999 = $29.99)</label><input type="number" class="fi" id="cAmt" placeholder="2999"></div>
+            <div class="fg" style="max-width:120px"><label class="fl">Currency</label><select class="fi" id="cCur"><option value="USD">USD</option><option value="EUR">EUR</option><option value="GBP">GBP</option><option value="CAD">CAD</option></select></div>
+          </div>
+          <div class="fg" style="margin-bottom:12px"><label class="fl">Description</label><input type="text" class="fi" id="cNote" placeholder="Monthly subscription"></div>
+          <div style="display:flex;gap:9px;margin-bottom:12px">
+            <div id="t-all" style="flex:1;background:var(--sg);border:1px solid var(--sh);border-radius:8px;padding:12px;text-align:center;cursor:pointer" onclick="setT('all')">
+              <div style="font-size:12px;font-weight:600;color:var(--sh)">All Customers</div>
+              <div style="font-size:11px;color:var(--text2);margin-top:2px" id="tAllN">with saved card</div>
+            </div>
+            <div id="t-one" style="flex:1;background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:12px;text-align:center;cursor:pointer" onclick="setT('one')">
+              <div style="font-size:12px;font-weight:600">One Customer</div>
+              <div style="font-size:11px;color:var(--text2);margin-top:2px">select below</div>
+            </div>
+            <div id="t-sub" style="flex:1;background:var(--s2);border:1px solid var(--border2);border-radius:8px;padding:12px;text-align:center;cursor:pointer" onclick="setT('sub')">
+              <div style="font-size:12px;font-weight:600">Create Subscription</div>
+              <div style="font-size:11px;color:var(--text2);margin-top:2px">recurring billing</div>
+            </div>
+          </div>
+          <div id="pickWrap" style="display:none;margin-bottom:12px"><label class="fl">Select Customer</label><select class="fi" id="custPick"><option value="">Choose...</option></select></div>
+          <div id="subWrap" style="display:none;margin-bottom:12px">
+            <div class="fr">
+              <div class="fg"><label class="fl">Billing Interval</label><select class="fi" id="sInt"><option value="DAY">Daily</option><option value="WEEK">Weekly</option><option value="MONTH" selected>Monthly</option></select></div>
+              <div class="fg"><label class="fl">Every X</label><input type="number" class="fi" id="sCnt" value="1" min="1"></div>
+            </div>
+          </div>
+          <div id="chargeProgressWrap" style="display:none"><div class="pw"><div class="pr"><span id="pLbl">Charging...</span><span id="pCnt">0/0</span></div><div class="pt"><div class="pf" id="pBar" style="width:0%"></div></div></div></div>
+          <div class="info"><strong>How it works:</strong> One-time charges create a draft order invoice sent to the customer. Subscriptions create a Shopify subscription contract billed automatically on the set interval using the customer's saved Shopify Payments card.</div>
+          <button class="btn btn-sh btn-lg" id="execBtn" onclick="executeCharge()"><span id="execTxt">⚡ Execute</span></button>
+        </div>
+      </div>
+
+      <!-- ORDERS -->
+      <div class="page" id="page-orders">
+        <div class="card">
+          <div class="card-head"><div class="card-title">All Orders <span class="pill" id="allOrdCount">0</span></div><button class="btn btn-ghost btn-sm" onclick="loadOrders()">↻</button></div>
+          <div class="toolbar">
+            <div class="sw"><input type="text" placeholder="Search..." oninput="filterOrd(this.value)"></div>
+            <div class="ftab active" onclick="setOF('any',this)">All</div>
+            <div class="ftab" onclick="setOF('paid',this)">Paid</div>
+            <div class="ftab" onclick="setOF('pending',this)">Pending</div>
+            <div class="ftab" onclick="setOF('refunded',this)">Refunded</div>
+          </div>
+          <div class="tw"><table><thead><tr><th>Order #</th><th>Customer</th><th>Amount</th><th>Status</th><th>Date</th><th></th></tr></thead><tbody id="ordTb"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- SELLING PLANS -->
+      <div class="page" id="page-selling-plans">
+        <div style="background:linear-gradient(135deg,rgba(56,189,248,0.08),transparent);border:1px solid rgba(56,189,248,0.2);border-radius:11px;padding:16px 20px;margin-bottom:16px">
+          <h3 style="font-size:13px;font-weight:600;margin-bottom:6px">Why Selling Plans?</h3>
+          <p style="font-size:12px;color:var(--text2);line-height:1.7">Shopify only saves a customer's payment method when they buy through a <strong style="color:var(--text)">Selling Plan</strong> at checkout. Without one, no card gets vaulted and subscription billing won't work.<br>
+          <strong style="color:var(--sh)">Setup flow:</strong> Create a plan below → assign it to your products in Shopify admin → customers subscribe at checkout → card is saved → you can rebill anytime.</p>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">Selling Plan Groups <span class="pill" id="planCount">0</span></div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-ghost btn-sm" onclick="loadSellingPlans()">↻</button>
+              <button class="btn btn-sh btn-sm" onclick="document.getElementById('createPlanMo').style.display='flex'">+ Create Plan</button>
+            </div>
+          </div>
+          <div class="tw"><table><thead><tr><th>Name</th><th>Plans</th><th>Products Assigned</th><th>Interval</th></tr></thead><tbody id="planTb"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- WEBHOOKS -->
+      <div class="page" id="page-webhooks">
+        <div style="background:linear-gradient(135deg,var(--ag),transparent);border:1px solid rgba(245,158,11,0.15);border-radius:11px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div>
+            <h3 style="font-size:13px;font-weight:600;margin-bottom:2px">Webhook Registration</h3>
+            <p style="font-size:12px;color:var(--text2)">Auto-detect new subscribers, billing events, and paid orders in real time — no polling needed.</p>
+          </div>
+          <button class="btn btn-sh" onclick="registerWebhooks()"><span id="regWHTxt">⚡ Register All</span></button>
+        </div>
+        <div class="card" style="margin-bottom:14px">
+          <div class="card-head"><div class="card-title">Registered Webhooks <span class="pill" id="whCount">0</span></div><button class="btn btn-ghost btn-sm" onclick="loadWebhooks()">↻</button></div>
+          <div class="tw"><table><thead><tr><th>Topic</th><th>Endpoint</th><th>Created</th></tr></thead><tbody id="whTb"></tbody></table></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-title">Recent Events <span class="pill" id="evCount">0</span></div></div>
+          <div class="tw"><table><thead><tr><th>Topic</th><th>Shop</th><th>ID</th><th>Time</th></tr></thead><tbody id="evTb"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- ANALYTICS -->
+      <div class="page" id="page-analytics">
+        <div class="stats-row">
+          <div class="stat g"><div class="sl">Total Revenue</div><div class="sv g" id="an-r">—</div></div>
+          <div class="stat sh"><div class="sl">Paid Orders</div><div class="sv sh" id="an-p">—</div></div>
+          <div class="stat r"><div class="sl">Refunded</div><div class="sv r" id="an-rf">—</div></div>
+          <div class="stat a"><div class="sl">Avg Order</div><div class="sv a" id="an-av">—</div></div>
+        </div>
+        <div class="cg">
+          <div class="cc2"><h3>Revenue Last 30 Days</h3><div class="ch"><canvas id="revChart"></canvas></div></div>
+          <div class="cc2"><h3>Order Status</h3><div class="ch" style="height:165px"><canvas id="stChart"></canvas></div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- CREATE SELLING PLAN MODAL -->
+<div class="mo" id="createPlanMo" style="display:none">
+  <div class="md">
+    <h3>+ Create Selling Plan</h3>
+    <p class="md-sub">Creates a subscription selling plan that saves customer payment methods at checkout so you can rebill them.</p>
+    <div class="fg"><label class="fl">Plan Group Name</label><input type="text" class="fi" id="spName" placeholder="Monthly Subscribe &amp; Save"></div>
+    <div class="fr">
+      <div class="fg"><label class="fl">Billing Interval</label><select class="fi" id="spInt"><option value="DAY">Daily</option><option value="WEEK">Weekly</option><option value="MONTH" selected>Monthly</option><option value="YEAR">Yearly</option></select></div>
+      <div class="fg" style="max-width:90px"><label class="fl">Every X</label><input type="number" class="fi" id="spCnt" value="1" min="1"></div>
+      <div class="fg" style="max-width:100px"><label class="fl">Discount %</label><input type="number" class="fi" id="spDisc" value="0" min="0" max="100" step="0.5"></div>
+    </div>
+    <div class="info"><strong>Next:</strong> After creating, go to Shopify Admin → Products → select a product → Subscriptions tab → assign this plan.</div>
+    <div class="md-act">
+      <button class="btn btn-ghost" onclick="closeM('createPlanMo')">Cancel</button>
+      <button class="btn btn-sh" id="createPlanBtn" onclick="createPlan()"><span id="createPlanTxt">Create Plan</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- BILL MODAL -->
+<div class="mo" id="billMo" style="display:none">
+  <div class="md">
+    <h3>⚡ Bill Subscription</h3>
+    <p class="md-sub">Trigger an immediate charge for this subscription using the customer's saved card.</p>
+    <div style="background:var(--s2);border:1px solid var(--border2);border-radius:7px;padding:12px;margin-bottom:14px">
+      <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:3px">CUSTOMER</div>
+      <div id="billMoCust" style="font-size:14px;font-weight:600">—</div>
+      <div id="billMoAmt" style="font-size:12px;color:var(--text2);font-family:var(--mono)">—</div>
+    </div>
+    <div class="info"><strong>Note:</strong> Uses the customer's saved Shopify Payments card directly.</div>
+    <div class="md-act">
+      <button class="btn btn-ghost" onclick="closeM('billMo')">Cancel</button>
+      <button class="btn btn-sh" id="billConfBtn" onclick="confirmBill()"><span id="billConfTxt">Charge Now</span></button>
+    </div>
+  </div>
+</div>
+
+<div class="tw2" id="toasts"></div>
+
+<script>
+const shop = new URLSearchParams(window.location.search).get('shop') || '';
+let customers=[], orders=[], subs=[];
+let cf='all', of='any', target='all';
+let activeSub=null;
+let charts={};
+
+window.onload = async () => {
+  if (!shop) return window.location='/';
+  document.getElementById('shopName').textContent = shop;
+  document.getElementById('connLabel').textContent = shop.replace('.myshopify.com','');
+  await refreshAll();
+};
+
+async function refreshAll() {
+  await Promise.all([loadCustomers(), loadOrders(), loadSubs()]);
+}
+
+async function api(path, method='GET', body=null) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify({ ...body, shop });
+  const sep = path.includes('?') ? '&' : '?';
+  const r = await fetch(`${path}${sep}shop=${shop}`, opts);
+  return r.json();
+}
+
+// LOAD
+async function loadCustomers() {
+  try {
+    const d = await api('/api/customers');
+    if (!d.success) throw new Error(d.error);
+    customers = d.customers;
+    const wc = customers.filter(c=>c.hasCard).length;
+    document.getElementById('ds-c').textContent = customers.length;
+    document.getElementById('ds-card').textContent = wc;
+    document.getElementById('custCount').textContent = customers.length;
+    document.getElementById('tAllN').textContent = wc + ' with saved card';
+    populatePicker();
+    renderCusts(customers);
+  } catch(e) { toast('Customers: ' + e.message, 'e'); }
+}
+
+async function loadOrders() {
+  try {
+    const d = await api('/api/orders');
+    if (!d.success) throw new Error(d.error);
+    orders = d.orders;
+    document.getElementById('ds-ord').textContent = orders.length;
+    document.getElementById('dashOrdCount').textContent = orders.length;
+    document.getElementById('allOrdCount').textContent = orders.length;
+    renderDashOrds(orders.slice(0,10));
+    renderOrds(orders);
+    buildCharts();
+  } catch(e) { toast('Orders: ' + e.message, 'e'); }
+}
+
+async function loadSubs() {
+  try {
+    const d = await api('/api/subscriptions');
+    if (!d.success) throw new Error(d.error);
+    subs = d.subscriptions;
+    const active = subs.filter(s=>s.status==='ACTIVE').length;
+    document.getElementById('ds-sub').textContent = active;
+    document.getElementById('subCount').textContent = subs.length;
+    document.getElementById('subBadge').textContent = active;
+    renderSubs(subs);
+    if (d.note) document.getElementById('subScopeWarn').style.display = 'block';
+  } catch(e) { toast('Subscriptions: ' + e.message, 'e'); }
+}
+
+// RENDER
+const cols=['#96bf48','#22c55e','#38bdf8','#f59e0b','#f43f5e'];
+const ac = id => cols[id.charCodeAt(3)%cols.length];
+
+function pmTag(c) {
+  if (!c.hasCard) return '<span class="tag a">No Card</span>';
+  const pm = c.card;
+  if (!pm) return '<span class="tag sh">Card saved</span>';
+  return `<span class="tag sh">•••• ${pm.lastDigits} <span style="opacity:0.6;font-size:10px">${pm.brand}</span></span>`;
+}
+
+function stTag(st) {
+  const m={paid:'g',pending:'a',refunded:'r',cancelled:'r',ACTIVE:'g',CANCELLED:'r',PAUSED:'a'};
+  return `<span class="tag ${m[st]||'gray'}">${st}</span>`;
+}
+
+function renderCusts(list) {
+  const f = cf==='card'?list.filter(c=>c.hasCard):cf==='nocard'?list.filter(c=>!c.hasCard):list;
+  const tb = document.getElementById('custTb');
+  if (!f.length) { tb.innerHTML=`<tr><td colspan="5"><div class="empty"><h4>No customers found</h4></div></td></tr>`; return; }
+  tb.innerHTML = f.map(c => {
+    const init=(c.displayName||c.email||'?').slice(0,2).toUpperCase();
+    const col=ac(c.id);
+    const spent=c.totalSpentV2?`$${parseFloat(c.totalSpentV2.amount).toFixed(2)}`:'—';
+    return `<tr>
+      <td><div class="cc"><div class="av" style="background:${col}18;color:${col}">${init}</div><div><div class="cn">${c.displayName||'—'}</div><div class="ce">${c.email||'—'}</div></div></div></td>
+      <td>${pmTag(c)}</td>
+      <td style="font-family:var(--mono);font-size:12px">${c.ordersCount||0}</td>
+      <td style="font-family:var(--mono);font-size:12px;color:var(--sh)">${spent}</td>
+      <td><div class="act">
+        ${c.hasCard?`<button class="btn btn-sh btn-xs" onclick="quickCharge('${c.id}','${(c.displayName||'').replace(/'/g,'')}')" >Charge</button>`:''}
+        <button class="btn btn-ghost btn-xs" onclick="quickSub('${c.id}','${(c.displayName||'').replace(/'/g,'')}')">+ Sub</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderDashOrds(list) {
+  const tb=document.getElementById('dashOrdTb');
+  if (!list.length){tb.innerHTML=`<tr><td colspan="5"><div class="empty"><h4>No orders yet</h4></div></td></tr>`;return;}
+  tb.innerHTML=list.map(o=>{
+    const name=o.customer?`${o.customer.first_name||''} ${o.customer.last_name||''}`.trim()||'Guest':'Guest';
+    const email=o.customer?.email||'—';
+    const date=new Date(o.created_at).toLocaleDateString();
+    return `<tr>
+      <td><div class="cc"><div><div class="cn">${name}</div><div class="ce">${email}</div></div></div></td>
+      <td style="font-family:var(--mono);font-weight:700">$${parseFloat(o.total_price||0).toFixed(2)}</td>
+      <td>${stTag(o.financial_status||'pending')}</td>
+      <td style="color:var(--text2);font-size:11px;font-family:var(--mono)">${date}</td>
+      <td><a href="https://${shop}/admin/orders/${o.id}" target="_blank" class="btn btn-ghost btn-xs">View ↗</a></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderOrds(list) {
+  const f=of==='any'?list:list.filter(o=>o.financial_status===of);
+  const tb=document.getElementById('ordTb');
+  if (!f.length){tb.innerHTML=`<tr><td colspan="6"><div class="empty"><h4>No orders</h4></div></td></tr>`;return;}
+  tb.innerHTML=f.map(o=>{
+    const name=o.customer?`${o.customer.first_name||''} ${o.customer.last_name||''}`.trim()||'Guest':'Guest';
+    const date=new Date(o.created_at).toLocaleDateString();
+    return `<tr>
+      <td style="font-family:var(--mono);font-size:12px;color:var(--text2)">#${o.order_number}</td>
+      <td>${name}</td>
+      <td style="font-family:var(--mono);font-weight:700">$${parseFloat(o.total_price||0).toFixed(2)}</td>
+      <td>${stTag(o.financial_status||'pending')}</td>
+      <td style="color:var(--text2);font-size:11px;font-family:var(--mono)">${date}</td>
+      <td><a href="https://${shop}/admin/orders/${o.id}" target="_blank" class="btn btn-ghost btn-xs">↗</a></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderSubs(list) {
+  const tb=document.getElementById('subTb');
+  if (!list.length){tb.innerHTML=`<tr><td colspan="6"><div class="empty"><h4>No subscriptions found</h4><p>Customers need to buy through a <strong>Selling Plan</strong> at checkout for their card to be saved. <span style="color:var(--sh);cursor:pointer" onclick="nav('selling-plans',null)">Set up Selling Plans →</span></p></div></td></tr>`;return;}
+  tb.innerHTML=list.map(s=>{
+    const lines=s.lines?.edges?.map(e=>e.node)||[];
+    const price=lines[0]?.currentPrice?`$${parseFloat(lines[0].currentPrice.amount).toFixed(2)} ${lines[0].currentPrice.currencyCode}`:'—';
+    const freq=s.billingPolicy?`Every ${s.billingPolicy.intervalCount} ${s.billingPolicy.interval}`:'—';
+    const next=s.nextBillingDate?new Date(s.nextBillingDate).toLocaleDateString():'—';
+    return `<tr>
+      <td><div class="cc"><div><div class="cn">${s.customer?.displayName||'—'}</div><div class="ce">${s.customer?.email||'—'}</div></div></div></td>
+      <td style="font-family:var(--mono);font-weight:700;color:var(--sh)">${price}</td>
+      <td style="font-size:12px;color:var(--text2)">${freq}</td>
+      <td style="font-family:var(--mono);font-size:12px;color:var(--text2)">${next}</td>
+      <td>${stTag(s.status)}</td>
+      <td><div class="act">
+        ${s.status==='ACTIVE'?`<button class="btn btn-sh btn-xs" onclick="openBill('${s.id}','${(s.customer?.displayName||s.customer?.email||'').replace(/'/g,'')}','${price}')">Bill</button>`:''}
+        <button class="btn btn-red btn-xs" onclick="cancelSub('${s.id}')">Cancel</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+// CHARGE
+function setT(t) {
+  target=t;
+  ['all','one','sub'].forEach(x=>{
+    const el=document.getElementById('t-'+x);
+    el.style.background='var(--s2)'; el.style.borderColor='var(--border2)';
+    el.querySelector('div').style.color='var(--text)';
+  });
+  const active=document.getElementById('t-'+t);
+  active.style.background='var(--sg)'; active.style.borderColor='var(--sh)';
+  active.querySelector('div').style.color='var(--sh)';
+  document.getElementById('pickWrap').style.display=t==='one'?'block':'none';
+  document.getElementById('subWrap').style.display=t==='sub'?'block':'none';
+}
+
+function populatePicker() {
+  const s=document.getElementById('custPick');
+  s.innerHTML='<option value="">Choose a customer...</option>';
+  customers.filter(c=>c.hasCard).forEach(c=>{
+    const o=document.createElement('option');
+    o.value=c.id; o.textContent=c.displayName||c.email||c.id; s.appendChild(o);
+  });
+}
+
+async function executeCharge() {
+  const amount=parseInt(document.getElementById('cAmt').value);
+  const currency=document.getElementById('cCur').value;
+  const note=document.getElementById('cNote').value||'RebillPro charge';
+  if (!amount||amount<50) return toast('Enter valid amount (min 50 cents)','e');
+  const btn=document.getElementById('execBtn');
+  document.getElementById('execTxt').innerHTML='<span class="spin"></span> Processing...';
+  btn.disabled=true;
+
+  if (target==='sub') {
+    const custId=document.getElementById('custPick').value;
+    if (!custId){toast('Select a customer','e');document.getElementById('execTxt').textContent='⚡ Execute';btn.disabled=false;return;}
+    const interval=document.getElementById('sInt').value;
+    const count=parseInt(document.getElementById('sCnt').value)||1;
+    const r=await api('/api/subscriptions/create','POST',{customerId:custId,amount,currency,intervalUnit:interval,intervalCount:count,description:note});
+    r.success?toast('✅ Subscription created!','s'):toast('Failed: '+r.error,'e');
+    await loadSubs();
+  } else if (target==='one') {
+    const custId=document.getElementById('custPick').value;
+    if (!custId){toast('Select a customer','e');document.getElementById('execTxt').textContent='⚡ Execute';btn.disabled=false;return;}
+    const r=await api('/api/draft-order','POST',{customerId:custId,amount,currency,note});
+    r.success?toast('✅ Invoice sent to customer','s'):toast('Failed: '+r.error,'e');
+    await loadOrders();
+  } else {
+    const targets=customers.filter(c=>c.hasCard);
+    if (!targets.length){toast('No customers with saved cards','e');document.getElementById('execTxt').textContent='⚡ Execute';btn.disabled=false;return;}
+    document.getElementById('chargeProgressWrap').style.display='block';
+    let ok=0,fail=0;
+    for(let i=0;i<targets.length;i++){
+      const pct=Math.round(((i+1)/targets.length)*100);
+      document.getElementById('pBar').style.width=pct+'%';
+      document.getElementById('pCnt').textContent=`${i+1}/${targets.length}`;
+      document.getElementById('pLbl').textContent=`Charging ${targets[i].displayName||targets[i].email}...`;
+      const r=await api('/api/draft-order','POST',{customerId:targets[i].id,amount,currency,note});
+      r.success?ok++:fail++;
+      await new Promise(res=>setTimeout(res,300));
+    }
+    document.getElementById('chargeProgressWrap').style.display='none';
+    toast(`Bulk: ${ok} invoices sent, ${fail} failed`,ok>0?'s':'e');
+    await loadOrders();
+  }
+  document.getElementById('execTxt').textContent='⚡ Execute';
+  btn.disabled=false;
+}
+
+function quickCharge(id,name) {
+  document.getElementById('custPick').value=id;
+  setT('one'); nav('charge',null);
+  toast('Selected: '+name,'w');
+}
+function quickSub(id,name) {
+  document.getElementById('custPick').value=id;
+  setT('sub'); nav('charge',null);
+  toast('Creating sub for: '+name,'w');
+}
+
+async function billAll() {
+  const btn=document.getElementById('billAllTxt');
+  btn.innerHTML='<span class="spin"></span> Billing...';
+  const r=await api('/api/subscriptions/bill-all','POST',{});
+  btn.textContent='⚡ Bill All Now';
+  r.success?toast(`Done: ${r.charged} charged, ${r.failed} failed of ${r.total}`,r.charged>0?'s':'e'):toast('Error: '+r.error,'e');
+  await loadSubs();
+}
+
+function openBill(id,cust,amt) {
+  activeSub=id;
+  document.getElementById('billMoCust').textContent=cust;
+  document.getElementById('billMoAmt').textContent=amt;
+  document.getElementById('billMo').style.display='flex';
+}
+async function confirmBill() {
+  const btn=document.getElementById('billConfBtn');
+  document.getElementById('billConfTxt').innerHTML='<span class="spin"></span>';
+  btn.disabled=true;
+  const r=await api('/api/subscriptions/bill','POST',{subscriptionContractId:activeSub});
+  closeM('billMo');
+  r.success?toast('✅ Billing successful','s'):toast('Failed: '+r.error,'e');
+  btn.disabled=false; document.getElementById('billConfTxt').textContent='Charge Now';
+  await loadSubs();
+}
+async function cancelSub(id) {
+  if (!confirm('Cancel this subscription?')) return;
+  const r=await api('/api/subscriptions/cancel','POST',{subscriptionContractId:id});
+  r.success?toast('Subscription cancelled','w'):toast('Error: '+r.error,'e');
+  await loadSubs();
+}
+
+// ANALYTICS
+function buildCharts() {
+  const paid=orders.filter(o=>o.financial_status==='paid');
+  const refunded=orders.filter(o=>o.financial_status==='refunded');
+  const rev=paid.reduce((s,o)=>s+parseFloat(o.total_price||0),0);
+  document.getElementById('an-r').textContent='$'+rev.toFixed(2);
+  document.getElementById('an-p').textContent=paid.length;
+  document.getElementById('an-rf').textContent=refunded.length;
+  document.getElementById('an-av').textContent=paid.length?'$'+(rev/paid.length).toFixed(2):'—';
+  const days={};
+  for(let i=29;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days[d.toLocaleDateString('en',{month:'short',day:'numeric'})]=0;}
+  orders.forEach(o=>{const k=new Date(o.created_at).toLocaleDateString('en',{month:'short',day:'numeric'});if(days[k]!==undefined)days[k]+=parseFloat(o.total_price||0);});
+  const labs=Object.keys(days).filter((_,i)=>i%5===0||i===29);
+  const vals=Object.entries(days).filter((_,i)=>i%5===0||i===29).map(([,v])=>v);
+  if(charts.rev)charts.rev.destroy();
+  charts.rev=new Chart(document.getElementById('revChart').getContext('2d'),{type:'bar',data:{labels:labs,datasets:[{label:'Revenue',data:vals,backgroundColor:'rgba(150,191,72,0.5)',borderColor:'#96bf48',borderWidth:1,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,0.03)'},ticks:{color:'#3d4a5c',font:{family:'Fira Code',size:10}}},y:{grid:{color:'rgba(255,255,255,0.03)'},ticks:{color:'#3d4a5c',font:{family:'Fira Code',size:10},callback:v=>'$'+v}}}}});
+  if(charts.st)charts.st.destroy();
+  charts.st=new Chart(document.getElementById('stChart').getContext('2d'),{type:'doughnut',data:{labels:['Paid','Pending','Refunded'],datasets:[{data:[paid.length,orders.filter(o=>o.financial_status==='pending').length,refunded.length],backgroundColor:['rgba(150,191,72,0.75)','rgba(245,158,11,0.75)','rgba(244,63,94,0.75)'],borderColor:['rgba(150,191,72,0.2)','rgba(245,158,11,0.2)','rgba(244,63,94,0.2)'],borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#8892a4',font:{family:'Fira Code',size:11},padding:11}}},cutout:'60%'}});
+}
+
+// FILTERS
+function filterC(q){renderCusts(customers.filter(c=>(c.displayName||'').toLowerCase().includes(q.toLowerCase())||(c.email||'').toLowerCase().includes(q.toLowerCase())));}
+function filterOrd(q){renderOrds(orders.filter(o=>(o.customer?.email||'').toLowerCase().includes(q.toLowerCase())||String(o.order_number).includes(q)));}
+function setCF(f,el){cf=f;document.querySelectorAll('#page-customers .ftab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderCusts(customers);}
+function setOF(f,el){of=f;document.querySelectorAll('#page-orders .ftab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderOrds(orders);}
+
+// EXPORT
+function exportCSV(){
+  const rows=[['Name','Email','Has Card','Card Last4','Brand','Orders','Spent']];
+  customers.forEach(c=>rows.push([c.displayName||'',c.email||'',c.hasCard?'Yes':'No',c.card?.lastDigits||'',c.card?.brand||'',c.ordersCount||0,c.totalSpentV2?.amount||0]));
+  const csv=rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=`customers_${shop}.csv`;a.click();
+  toast('Exported CSV','s');
+}
+
+// NAV
+const titles={dashboard:'Dashboard',customers:'Customers',subscriptions:'Subscriptions',charge:'Charge Now',orders:'Orders',analytics:'Analytics','selling-plans':'Selling Plans',webhooks:'Webhooks'};
+const pageLoaders={'selling-plans':()=>loadSellingPlans(),webhooks:()=>loadWebhooks()};
+function nav(page,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
+  if(el)el.classList.add('active');
+  document.getElementById('pageTitle').textContent=titles[page]||page;
+  if(pageLoaders[page])pageLoaders[page]();
+}
+
+// UTILS
+function closeM(id){document.getElementById(id).style.display='none';}
+function toast(msg,type='s'){
+  const c=document.getElementById('toasts');
+  const t=document.createElement('div');
+  t.className=`toast ${type}`;
+  t.innerHTML=`<span>${type==='s'?'✅':type==='e'?'❌':'⚠️'}</span> ${msg}`;
+  c.appendChild(t);setTimeout(()=>t.remove(),4200);
+}
+document.querySelectorAll('.mo').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.style.display='none';}));
+
+// ── SELLING PLANS ────────────────────────────────────────────────
+let sellingPlans=[];
+async function loadSellingPlans(){
+  try{
+    const d=await api('/api/selling-plans');
+    if(!d.success)throw new Error(d.error);
+    sellingPlans=d.groups;
+    document.getElementById('planCount').textContent=sellingPlans.length;
+    renderPlans(sellingPlans);
+  }catch(e){toast('Selling Plans: '+e.message,'e');}
+}
+function renderPlans(list){
+  const tb=document.getElementById('planTb');
+  if(!list.length){tb.innerHTML=`<tr><td colspan="4"><div class="empty"><h4>No selling plans yet</h4><p>Create a plan to enable subscription checkout and card saving</p></div></td></tr>`;return;}
+  tb.innerHTML=list.map(g=>{
+    const plans=g.sellingPlans?.edges?.map(e=>e.node)||[];
+    const bp=plans[0]?.billingPolicy;
+    const interval=bp?`Every ${bp.intervalCount} ${bp.interval.toLowerCase()}`:'—';
+    return `<tr>
+      <td style="font-weight:600">${g.name}</td>
+      <td style="font-family:var(--mono);font-size:12px">${plans.length}</td>
+      <td style="font-family:var(--mono);font-size:12px;color:var(--sh)">${g.productCount}</td>
+      <td style="font-size:12px;color:var(--text2)">${interval}</td>
+    </tr>`;
+  }).join('');
+}
+async function createPlan(){
+  const name=document.getElementById('spName').value.trim();
+  const interval=document.getElementById('spInt').value;
+  const intervalCount=parseInt(document.getElementById('spCnt').value)||1;
+  const discount=parseFloat(document.getElementById('spDisc').value)||0;
+  if(!name)return toast('Enter a plan name','e');
+  const btn=document.getElementById('createPlanBtn');
+  document.getElementById('createPlanTxt').innerHTML='<span class="spin"></span>';
+  btn.disabled=true;
+  const r=await api('/api/selling-plans/create','POST',{name,interval,intervalCount,discount});
+  btn.disabled=false;
+  document.getElementById('createPlanTxt').textContent='Create Plan';
+  if(r.success){closeM('createPlanMo');toast('✅ Selling plan created!','s');await loadSellingPlans();}
+  else toast('Failed: '+r.error,'e');
+}
+
+// ── WEBHOOKS ─────────────────────────────────────────────────────
+async function loadWebhooks(){
+  try{
+    const d=await api('/api/webhooks');
+    if(!d.success)throw new Error(d.error);
+    document.getElementById('whCount').textContent=d.webhooks.length;
+    document.getElementById('evCount').textContent=d.events.length;
+    renderWebhooks(d.webhooks);
+    renderEvents(d.events);
+  }catch(e){toast('Webhooks: '+e.message,'e');}
+}
+function renderWebhooks(list){
+  const tb=document.getElementById('whTb');
+  if(!list.length){tb.innerHTML=`<tr><td colspan="3"><div class="empty"><h4>No webhooks registered</h4><p>Click "Register All" to set up auto-detection</p></div></td></tr>`;return;}
+  tb.innerHTML=list.map(w=>`<tr>
+    <td><span class="tag sh">${w.topic}</span></td>
+    <td style="font-family:var(--mono);font-size:11px;color:var(--text2)">${w.address}</td>
+    <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${new Date(w.created_at).toLocaleDateString()}</td>
+  </tr>`).join('');
+}
+function renderEvents(list){
+  const tb=document.getElementById('evTb');
+  if(!list.length){tb.innerHTML=`<tr><td colspan="4"><div class="empty"><h4>No events yet</h4><p>Events appear here as webhooks fire</p></div></td></tr>`;return;}
+  tb.innerHTML=list.map(e=>`<tr>
+    <td><span class="tag sh">${e.topic}</span></td>
+    <td style="font-family:var(--mono);font-size:11px;color:var(--text2)">${e.shop}</td>
+    <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${e.id||'—'}</td>
+    <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${new Date(e.at).toLocaleTimeString()}</td>
+  </tr>`).join('');
+}
+async function registerWebhooks(){
+  const btn=document.getElementById('regWHTxt');
+  btn.innerHTML='<span class="spin"></span> Registering...';
+  const r=await api('/api/webhooks/register','POST',{});
+  btn.textContent='⚡ Register All';
+  if(r.success){
+    const ok=r.results.filter(x=>x.success).length;
+    const fail=r.results.filter(x=>!x.success).length;
+    toast(fail?`Registered ${ok}, failed ${fail}. Check APP_URL is publicly reachable.`:`✅ ${ok} webhooks registered!`,fail?'w':'s');
+    await loadWebhooks();
+  }else toast('Failed: '+r.error,'e');
+}
+</script>
+</body>
+</html>
