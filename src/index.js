@@ -421,35 +421,19 @@ app.post('/webhooks', (req, res) => {
 // ── SELLING PLANS ────────────────────────────────────────────────
 app.get('/api/selling-plans', requireAuth, async (req, res) => {
   try {
-    const query = `
-      query {
-        sellingPlanGroups(first: 50) {
-          edges {
-            node {
-              id
-              name
-              merchantCode
-              sellingPlans(first: 5) {
-                edges {
-                  node {
-                    id
-                    name
-                    billingPolicy {
-                      ... on SellingPlanRecurringBillingPolicy {
-                        interval
-                        intervalCount
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    `;
-    const data = await gql(req.shop, req.token, query);
-    const groups = data.sellingPlanGroups?.edges?.map(e => e.node) || [];
+    const d = await rest(req.shop, req.token, 'selling_plan_groups.json?limit=50');
+    if (d.errors) throw new Error(JSON.stringify(d.errors));
+    const groups = (d.selling_plan_groups || []).map(g => ({
+      id: String(g.id),
+      name: g.name,
+      merchantCode: g.merchant_code,
+      productCount: g.product_count || 0,
+      sellingPlans: { edges: (g.selling_plans || []).map(p => ({ node: {
+        id: String(p.id),
+        name: p.name,
+        billingPolicy: { interval: (p.billing_policy?.interval || '').toUpperCase(), intervalCount: p.billing_policy?.interval_count || 1 }
+      }})) }
+    }));
     res.json({ success: true, groups });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -461,32 +445,23 @@ app.post('/api/selling-plans/create', requireAuth, async (req, res) => {
     const count = parseInt(intervalCount) || 1;
     const pct = parseFloat(discount) || 0;
     const planName = `Delivery every ${count} ${interval.toLowerCase()}${count > 1 ? 's' : ''}`;
-
-    const mutation = `
-      mutation sellingPlanGroupCreate($input: SellingPlanGroupInput!) {
-        sellingPlanGroupCreate(input: $input) {
-          sellingPlanGroup { id name merchantCode }
-          userErrors { field message }
-        }
+    const body = {
+      selling_plan_group: {
+        name,
+        merchant_code: merchantCode,
+        options: ['Delivery every'],
+        selling_plans: [{
+          name: planName,
+          options: [`${count} ${interval.charAt(0) + interval.slice(1).toLowerCase()}`],
+          billing_policy: { interval: interval.toLowerCase(), interval_count: count },
+          delivery_policy: { interval: interval.toLowerCase(), interval_count: count },
+          ...(pct > 0 && { pricing_policies: [{ adjustment_type: 'percentage', adjustment_value: String(pct) }] })
+        }]
       }
-    `;
-    const input = {
-      name,
-      merchantCode,
-      options: ['Delivery every'],
-      sellingPlans: [{
-        name: planName,
-        options: [`${count} ${interval.charAt(0) + interval.slice(1).toLowerCase()}`],
-        billingPolicy: { recurring: { interval: interval.toUpperCase(), intervalCount: count } },
-        deliveryPolicy: { recurring: { interval: interval.toUpperCase(), intervalCount: count } },
-        pricingPolicies: [{ fixed: { adjustmentType: 'PERCENTAGE', adjustmentValue: { percentage: pct } } }]
-      }]
     };
-    const result = await gql(req.shop, req.token, mutation, { input });
-    if (result.sellingPlanGroupCreate.userErrors?.length) {
-      throw new Error(result.sellingPlanGroupCreate.userErrors[0].message);
-    }
-    res.json({ success: true, group: result.sellingPlanGroupCreate.sellingPlanGroup });
+    const d = await rest(req.shop, req.token, 'selling_plan_groups.json', 'POST', body);
+    if (d.errors) throw new Error(JSON.stringify(d.errors));
+    res.json({ success: true, group: d.selling_plan_group });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
