@@ -56,7 +56,7 @@ const SCOPES             = 'read_customers,write_customers,read_orders,write_ord
 async function gql(shop, token, query, variables = {}) {
   const r = await fetch(`https://${shop}/admin/api/2024-10/graphql.json`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': token },
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-Shopify-Access-Token': token },
     body: JSON.stringify({ query, variables })
   });
   const d = await r.json();
@@ -67,7 +67,7 @@ async function gql(shop, token, query, variables = {}) {
 async function rest(shop, token, endpoint, method = 'GET', body = null) {
   const opts = {
     method,
-    headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': token }
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-Shopify-Access-Token': token }
   };
   if (body) opts.body = JSON.stringify(body);
   const r = await fetch(`https://${shop}/admin/api/2024-10/${endpoint}`, opts);
