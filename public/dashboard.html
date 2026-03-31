@@ -744,35 +744,46 @@ async function loadSellingPlans(){
   }catch(e){toast('Selling Plans: '+e.message,'e');}
 }
 function renderPlans(list){
-  const tb=document.getElementById('planTb');
-  if(!list.length){tb.innerHTML=`<tr><td colspan="4"><div class="empty"><h4>No selling plans yet</h4><p>Create a plan to enable subscription checkout and card saving</p></div></td></tr>`;return;}
-  tb.innerHTML=list.map(g=>{
-    const plans=g.sellingPlans||[];
-    const bp=plans[0]?.billingPolicy;
-    const interval=plans[0]?.name||'—';
-    const products=g.products||[];
-    const prodList=products.map(p=>`
-      <div style="margin-bottom:8px">
-        <div style="font-weight:600;font-size:11px">${p.title}</div>
-        ${p.variants.map(v=>`
-          <div style="display:flex;align-items:center;gap:5px;margin-top:2px">
-            <span class="pill" style="font-size:9px;padding:1px 4px">${v.id.split('/').pop()}</span>
-            <span style="font-size:10px;color:var(--text2)">${v.title}</span>
-            <button class="btn btn-ghost btn-xs" style="padding:1px 4px;font-size:9px" onclick="copyBridge('${v.id.split('/').pop()}','${plans[0]?.id.split('/').pop()}')">🔗 Link</button>
-            <button class="btn btn-sh btn-xs" style="padding:1px 4px;font-size:9px" onclick="openGhost('${v.id.split('/').pop()}','${plans[0]?.id.split('/').pop()}')">👻 Ghost</button>
-          </div>
-        `).join('')}
-      </div>
-    `).join('');
-    
-    return `<tr>
-      <td style="font-weight:600">${g.name}</td>
-      <td style="font-family:var(--mono);font-size:12px">${plans.length}</td>
-      <td>${prodList||'<span class="tag a">No Products Assigned</span>'}</td>
-      <td style="font-size:12px;color:var(--text2)">${interval}</td>
-      <td><button class="btn btn-red btn-xs">Delete</button></td>
-    </tr>`;
-  }).join('');
+  const tb = document.getElementById('planTb');
+  if(!list || !list.length){
+    tb.innerHTML=`<tr><td colspan="5"><div class="empty"><h4>No selling plans yet</h4><p>Create a plan to enable subscription checkout and card saving</p></div></td></tr>`;
+    return;
+  }
+  try {
+    tb.innerHTML = list.map(g => {
+      const plans = g.sellingPlans || [];
+      const interval = plans[0]?.name || 'Regular Plan';
+      const products = g.products || [];
+      const prodList = products.map(p => `
+        <div style="margin-bottom:8px">
+          <div style="font-weight:600;font-size:11px">${p.title || 'Untitled Product'}</div>
+          ${(p.variants || []).map(v => {
+            const vId = v.id ? v.id.split('/').pop() : '';
+            const pId = plans[0]?.id ? plans[0].id.split('/').pop() : '';
+            return `
+              <div style="display:flex;align-items:center;gap:5px;margin-top:2px">
+                <span class="pill" style="font-size:9px;padding:1px 4px">${vId}</span>
+                <span style="font-size:10px;color:var(--text2)">${v.title || 'Default'}</span>
+                <button class="btn btn-ghost btn-xs" style="padding:1px 4px;font-size:9px" onclick="copyBridge('${vId}','${pId}')">🔗 Link</button>
+                <button class="btn btn-sh btn-xs" style="padding:1px 4px;font-size:9px" onclick="openGhost('${vId}','${pId}')">👻 Ghost</button>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `).join('');
+      
+      return `<tr>
+        <td style="font-weight:600">${g.name || 'Untitled Group'}</td>
+        <td style="font-family:var(--mono);font-size:12px">${plans.length}</td>
+        <td>${prodList || '<span class="tag a">No Products Assigned</span>'}</td>
+        <td style="font-size:12px;color:var(--text2)">${interval}</td>
+        <td><button class="btn btn-red btn-xs">Delete</button></td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    console.error('Render error:', e);
+    tb.innerHTML = `<tr><td colspan="5"><div class="empty"><h4>Error rendering plans</h4><p>${e.message}</p></div></td></tr>`;
+  }
 }
 let activeGh={vId:'',pId:''};
 function openGhost(vId,pId){activeGh={vId,pId};document.getElementById('ghostMo').style.display='flex';}

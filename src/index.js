@@ -417,8 +417,8 @@ app.post('/api/checkout/create-prefilled', async (req, res) => {
 });
 
 async function getShopToken(shop) {
-  // Helper to get token (implementation depends on your DB logic)
-  return process.env.SHOPIFY_ACCESS_TOKEN; // Simplified for now
+  if (store.shops && store.shops[shop]) return store.shops[shop].accessToken;
+  return process.env.SHOPIFY_ACCESS_TOKEN;
 }
 
 const WEBHOOK_TOPICS = [
