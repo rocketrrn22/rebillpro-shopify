@@ -356,7 +356,29 @@ code{background:var(--s3);color:var(--sh);padding:2px 6px;border-radius:4px;font
   </div>
 </div>
 
-<!-- BILL MODAL -->
+<!-- GHOST CHECKOUT MODAL -->
+<div class="mo" id="ghostMo" style="display:none">
+  <div class="md">
+    <h3>👻 Ghost Link Generator</h3>
+    <p class="md-sub">Pre-fills the checkout with these details so the customer skips straight to the Payment step.</p>
+    <div class="fg"><label class="fl">Email Address</label><input type="email" class="fi" id="ghEmail" value="test@example.com"></div>
+    <div class="fr">
+      <div class="fg"><label class="fl">First Name</label><input type="text" class="fi" id="ghFn" value="John"></div>
+      <div class="fg"><label class="fl">Last Name</label><input type="text" class="fi" id="ghLn" value="Doe"></div>
+    </div>
+    <div class="fg"><label class="fl">Address</label><input type="text" class="fi" id="ghAddr" value="123 Magic Way"></div>
+    <div class="fr">
+      <div class="fg"><label class="fl">City</label><input type="text" class="fi" id="ghCity" value="Paris"></div>
+      <div class="fg"><label class="fl">Zip</label><input type="text" class="fi" id="ghZip" value="75001"></div>
+    </div>
+    <div class="info"><strong>Status:</strong> This link will bypass the "Information" and "Shipping" pages of your Shopify Checkout.</div>
+    <div class="md-act">
+      <button class="btn btn-ghost" onclick="closeM('ghostMo')">Cancel</button>
+      <button class="btn btn-sh" id="ghBtn" onclick="generateGhostLink()"><span id="ghTxt">Generate &amp; Copy</span></button>
+    </div>
+  </div>
+</div>
+
 <div class="mo" id="billMo" style="display:none">
   <div class="md">
     <h3>⚡ Bill Subscription</h3>
@@ -737,6 +759,7 @@ function renderPlans(list){
             <span class="pill" style="font-size:9px;padding:1px 4px">${v.id.split('/').pop()}</span>
             <span style="font-size:10px;color:var(--text2)">${v.title}</span>
             <button class="btn btn-ghost btn-xs" style="padding:1px 4px;font-size:9px" onclick="copyBridge('${v.id.split('/').pop()}','${plans[0]?.id.split('/').pop()}')">🔗 Link</button>
+            <button class="btn btn-sh btn-xs" style="padding:1px 4px;font-size:9px" onclick="openGhost('${v.id.split('/').pop()}','${plans[0]?.id.split('/').pop()}')">👻 Ghost</button>
           </div>
         `).join('')}
       </div>
@@ -750,6 +773,28 @@ function renderPlans(list){
       <td><button class="btn btn-red btn-xs">Delete</button></td>
     </tr>`;
   }).join('');
+}
+let activeGh={vId:'',pId:''};
+function openGhost(vId,pId){activeGh={vId,pId};document.getElementById('ghostMo').style.display='flex';}
+async function generateGhostLink(){
+  const btn=document.getElementById('ghBtn');
+  document.getElementById('ghTxt').innerHTML='<span class="spin"></span>';
+  btn.disabled=true;
+  const d={
+    variantId: activeGh.vId,
+    sellingPlanId: activeGh.pId,
+    email: document.getElementById('ghEmail').value,
+    firstName: document.getElementById('ghFn').value,
+    lastName: document.getElementById('ghLn').value,
+    address: document.getElementById('ghAddr').value,
+    city: document.getElementById('ghCity').value,
+    zip: document.getElementById('ghZip').value,
+    country: 'FR'
+  };
+  const r=await api('/api/checkout/create-prefilled','POST',d);
+  btn.disabled=false; document.getElementById('ghTxt').textContent='Generate & Copy';
+  if(r.success){navigator.clipboard.writeText(r.url);toast('✅ Ghost Link Copied!','s');closeM('ghostMo');}
+  else toast('Failed: '+r.error,'e');
 }
 function copyBridge(vId,pId){
   const url=`https://${shop}/cart/add?id=${vId}&quantity=1&selling_plan=${pId}&return_to=/checkout`;
