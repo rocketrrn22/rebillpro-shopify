@@ -752,7 +752,7 @@ function renderPlans(list){
   }).join('');
 }
 function copyBridge(vId,pId){
-  const url=`https://${shop}/cart/add?id=${vId}&quantity=1&selling_plan=${pId}`;
+  const url=`https://${shop}/cart/add?id=${vId}&quantity=1&selling_plan=${pId}&return_to=/checkout`;
   navigator.clipboard.writeText(url);
   toast('✅ Link copied to clipboard!','s');
   console.log("Merchant Link:", url);
