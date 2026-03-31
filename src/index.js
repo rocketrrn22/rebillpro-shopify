@@ -387,8 +387,25 @@ app.post('/api/draft-order', requireAuth, async (req, res) => {
 
 // ── GHOST CHECKOUT: PRE-FILLED REDIRECT ──────────────────────────
 app.post('/api/checkout/create-prefilled', async (req, res) => {
-  const { shop, variantId, sellingPlanId, email, firstName, lastName, address, city, zip, country } = req.body;
-  if (!shop || !variantId || !email) return res.status(400).json({ error: 'Missing requirements' });
+  // Make it "Lovable Friendly" by supporting different names for the same things
+  const { 
+    shop = 'jx49ii-v0.myshopify.com', 
+    variantId, 
+    sellingPlanId, 
+    email, 
+    firstName, 
+    lastName, 
+    address,
+    address1, 
+    city, 
+    zip, 
+    country 
+  } = req.body;
+
+  // Use either 'address' or 'address1'
+  const finalAddress = address || address1 || '';
+
+  if (!variantId || !email) return res.status(400).json({ error: 'Missing variantId or email' });
 
   try {
     const token = await getShopToken(shop);
@@ -402,7 +419,7 @@ app.post('/api/checkout/create-prefilled', async (req, res) => {
       'checkout[email]': email,
       'checkout[shipping_address][first_name]': firstName || '',
       'checkout[shipping_address][last_name]': lastName || '',
-      'checkout[shipping_address][address1]': address || '',
+      'checkout[shipping_address][address1]': finalAddress,
       'checkout[shipping_address][city]': city || '',
       'checkout[shipping_address][zip]': zip || '',
       'checkout[shipping_address][country]': country || 'FR',
