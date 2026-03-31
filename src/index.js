@@ -46,6 +46,13 @@ const store = {
   webhookEvents: []
 };
 
+// Auto-load token from env vars (custom app setup — no OAuth needed)
+if (process.env.SHOPIFY_SHOP && process.env.SHOPIFY_ACCESS_TOKEN) {
+  const s = process.env.SHOPIFY_SHOP;
+  store.shops[s] = { accessToken: process.env.SHOPIFY_ACCESS_TOKEN, shop: s, at: new Date().toISOString() };
+  console.log(`✅ Loaded token from env for ${s}`);
+}
+
 // ── CONFIG ──────────────────────────────────────────────────────
 const SHOPIFY_API_KEY    = process.env.SHOPIFY_API_KEY    || '';
 const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET || '';
