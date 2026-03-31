@@ -178,7 +178,7 @@ app.get('/api/customers', requireAuth, async (req, res) => {
               email
               phone
               createdAt
-              ordersCount
+              numberOfOrders
               totalSpentV2 { amount currencyCode }
               paymentMethods(first: 3) {
                 edges {
@@ -204,6 +204,7 @@ app.get('/api/customers', requireAuth, async (req, res) => {
     const data = await gql(req.shop, req.token, query);
     const customers = data.customers.edges.map(e => ({
       ...e.node,
+      ordersCount: e.node.numberOfOrders,
       hasCard: e.node.paymentMethods.edges.length > 0,
       card: e.node.paymentMethods.edges[0]?.node?.instrument || null
     }));
