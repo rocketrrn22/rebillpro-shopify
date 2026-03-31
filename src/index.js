@@ -61,7 +61,7 @@ const SCOPES             = 'read_customers,write_customers,read_orders,write_ord
 
 // ── HELPERS ─────────────────────────────────────────────────────
 async function gql(shop, token, query, variables = {}) {
-  const r = await fetch(`https://${shop}/admin/api/2024-01/graphql.json`, {
+  const r = await fetch(`https://${shop}/admin/api/2024-10/graphql.json`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-Shopify-Access-Token': token },
     body: JSON.stringify({ query, variables })
@@ -77,7 +77,7 @@ async function rest(shop, token, endpoint, method = 'GET', body = null) {
     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-Shopify-Access-Token': token }
   };
   if (body) opts.body = JSON.stringify(body);
-  const r = await fetch(`https://${shop}/admin/api/2024-01/${endpoint}`, opts);
+  const r = await fetch(`https://${shop}/admin/api/2024-10/${endpoint}`, opts);
   const text = await r.text();
   if (!text) throw new Error(`HTTP ${r.status} — empty response. App may need reinstalling to get new scopes.`);
   try { return JSON.parse(text); }
@@ -178,8 +178,8 @@ app.get('/api/customers', requireAuth, async (req, res) => {
               email
               phone
               createdAt
-              numberOfOrders
-              totalSpentV2 { amount currencyCode }
+               numberOfOrders
+              amountSpent { amount currencyCode }
               paymentMethods(first: 3) {
                 edges {
                   node {
@@ -205,7 +205,7 @@ app.get('/api/customers', requireAuth, async (req, res) => {
     const customers = data.customers.edges.map(e => ({
       ...e.node,
       ordersCount: e.node.numberOfOrders,
-      totalSpentV2: e.node.totalSpentV2,
+      totalSpentV2: e.node.amountSpent,
       hasCard: e.node.paymentMethods.edges.length > 0,
       card: e.node.paymentMethods.edges[0]?.node?.instrument || null
     }));
@@ -496,6 +496,7 @@ app.post('/api/selling-plans/create', requireAuth, async (req, res) => {
       options: ['Delivery every'],
       sellingPlansToCreate: [{
         name: planName,
+        category: 'SUBSCRIPTION',
         options: [`${count} ${interval.charAt(0) + interval.slice(1).toLowerCase()}`],
         billingPolicy: {
           recurring: { interval: interval.toUpperCase(), intervalCount: count }
