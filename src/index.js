@@ -442,6 +442,23 @@ app.get('/api/selling-plans', requireAuth, async (req, res) => {
               name
               merchantCode
               productsCount { count }
+              products(first: 5) {
+                edges {
+                  node {
+                    id
+                    title
+                    variants(first: 5) {
+                      edges {
+                        node {
+                          id
+                          title
+                          sku
+                        }
+                      }
+                    }
+                  }
+                }
+              }
               sellingPlans(first: 10) {
                 edges {
                   node {
@@ -467,7 +484,19 @@ app.get('/api/selling-plans', requireAuth, async (req, res) => {
       name: e.node.name,
       merchantCode: e.node.merchantCode,
       productCount: e.node.productsCount?.count || 0,
-      sellingPlans: e.node.sellingPlans
+      products: e.node.products.edges.map(pe => ({
+        id: pe.node.id,
+        title: pe.node.title,
+        variants: pe.node.variants.edges.map(ve => ({
+          id: ve.node.id,
+          title: ve.node.title,
+          sku: ve.node.sku
+        }))
+      })),
+      sellingPlans: e.node.sellingPlans.edges.map(se => ({
+        id: se.node.id,
+        name: se.node.name
+      }))
     }));
     res.json({ success: true, groups });
   } catch (e) { res.status(500).json({ error: e.message }); }

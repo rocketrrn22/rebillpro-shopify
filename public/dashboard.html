@@ -296,7 +296,7 @@ code{background:var(--s3);color:var(--sh);padding:2px 6px;border-radius:4px;font
               <button class="btn btn-sh btn-sm" onclick="document.getElementById('createPlanMo').style.display='flex'">+ Create Plan</button>
             </div>
           </div>
-          <div class="tw"><table><thead><tr><th>Name</th><th>Plans</th><th>Products Assigned</th><th>Interval</th></tr></thead><tbody id="planTb"></tbody></table></div>
+          <div class="tw"><table><thead><tr><th>Name</th><th>Plans</th><th>Products &amp; Variants (for Lovable)</th><th>Interval</th><th>Actions</th></tr></thead><tbody id="planTb"></tbody></table></div>
         </div>
       </div>
 
@@ -725,16 +725,37 @@ function renderPlans(list){
   const tb=document.getElementById('planTb');
   if(!list.length){tb.innerHTML=`<tr><td colspan="4"><div class="empty"><h4>No selling plans yet</h4><p>Create a plan to enable subscription checkout and card saving</p></div></td></tr>`;return;}
   tb.innerHTML=list.map(g=>{
-    const plans=g.sellingPlans?.edges?.map(e=>e.node)||[];
+    const plans=g.sellingPlans||[];
     const bp=plans[0]?.billingPolicy;
-    const interval=bp?`Every ${bp.intervalCount} ${bp.interval.toLowerCase()}`:'—';
+    const interval=plans[0]?.name||'—';
+    const products=g.products||[];
+    const prodList=products.map(p=>`
+      <div style="margin-bottom:8px">
+        <div style="font-weight:600;font-size:11px">${p.title}</div>
+        ${p.variants.map(v=>`
+          <div style="display:flex;align-items:center;gap:5px;margin-top:2px">
+            <span class="pill" style="font-size:9px;padding:1px 4px">${v.id.split('/').pop()}</span>
+            <span style="font-size:10px;color:var(--text2)">${v.title}</span>
+            <button class="btn btn-ghost btn-xs" style="padding:1px 4px;font-size:9px" onclick="copyBridge('${v.id.split('/').pop()}','${plans[0]?.id.split('/').pop()}')">🔗 Link</button>
+          </div>
+        `).join('')}
+      </div>
+    `).join('');
+    
     return `<tr>
       <td style="font-weight:600">${g.name}</td>
       <td style="font-family:var(--mono);font-size:12px">${plans.length}</td>
-      <td style="font-family:var(--mono);font-size:12px;color:var(--sh)">${g.productCount}</td>
+      <td>${prodList||'<span class="tag a">No Products Assigned</span>'}</td>
       <td style="font-size:12px;color:var(--text2)">${interval}</td>
+      <td><button class="btn btn-red btn-xs">Delete</button></td>
     </tr>`;
   }).join('');
+}
+function copyBridge(vId,pId){
+  const url=\`https://\${shop}/cart/\${vId}:1?selling_plan=\${pId}\`;
+  navigator.clipboard.writeText(url);
+  toast('✅ Link copied to clipboard!','s');
+  console.log("Merchant Link:", url);
 }
 async function createPlan(){
   const name=document.getElementById('spName').value.trim();
