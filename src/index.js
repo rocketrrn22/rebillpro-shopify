@@ -6,6 +6,7 @@ const cors = require('cors');
 const crypto = require('crypto');
 const fetch = require('node-fetch');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -24,9 +25,24 @@ app.use(session({
   cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 }
 }));
 
-// ── IN-MEMORY STORE ─────────────────────────────────────────────
+// ── PERSISTENT STORE ────────────────────────────────────────────
+const STORE_FILE = path.join(__dirname, '../store.json');
+
+function loadStore() {
+  try {
+    if (fs.existsSync(STORE_FILE)) return JSON.parse(fs.readFileSync(STORE_FILE, 'utf8'));
+  } catch (e) { console.error('Failed to load store:', e.message); }
+  return { shops: {} };
+}
+
+function saveStore() {
+  try { fs.writeFileSync(STORE_FILE, JSON.stringify({ shops: store.shops }, null, 2)); }
+  catch (e) { console.error('Failed to save store:', e.message); }
+}
+
+const persisted = loadStore();
 const store = {
-  shops: {},
+  shops: persisted.shops || {},
   webhookEvents: []
 };
 
@@ -104,6 +120,7 @@ app.get('/auth/callback', async (req, res) => {
     });
     const { access_token } = await r.json();
     store.shops[shop] = { accessToken: access_token, shop, at: new Date().toISOString() };
+    saveStore();
     req.session.shop = shop;
     console.log(`✅ Installed: ${shop}`);
     res.redirect(`/dashboard?shop=${shop}`);
@@ -442,9 +459,10 @@ app.post('/api/selling-plans/create', requireAuth, async (req, res) => {
   try {
     const merchantCode = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     const count = parseInt(intervalCount) || 1;
-    const planName = `Delivery every ${count} ${interval.toLowerCase()}${count > 1 ? 's' : ''}`;
     const pct = parseFloat(discount) || 0;
-    const mutation = `
+
+    // Step 1 — create the group (sellingPlans removed from input in API 2025-01)
+    const createMutation = `
       mutation sellingPlanGroupCreate($input: SellingPlanGroupInput!) {
         sellingPlanGroupCreate(input: $input) {
           sellingPlanGroup { id name merchantCode }
@@ -452,10 +470,26 @@ app.post('/api/selling-plans/create', requireAuth, async (req, res) => {
         }
       }
     `;
-    const input = {
-      name,
-      merchantCode,
-      options: ['Delivery every'],
+    const groupResult = await gql(req.shop, req.token, createMutation, {
+      input: { name, merchantCode, options: ['Delivery every'] }
+    });
+    if (groupResult.sellingPlanGroupCreate.userErrors?.length) {
+      throw new Error(groupResult.sellingPlanGroupCreate.userErrors[0].message);
+    }
+    const groupId = groupResult.sellingPlanGroupCreate.sellingPlanGroup.id;
+
+    // Step 2 — add the selling plan to the group
+    const planName = `Delivery every ${count} ${interval.toLowerCase()}${count > 1 ? 's' : ''}`;
+    const addPlanMutation = `
+      mutation sellingPlanGroupAddSellingPlans($id: ID!, $sellingPlans: [SellingPlanInput!]!) {
+        sellingPlanGroupAddSellingPlans(id: $id, sellingPlans: $sellingPlans) {
+          sellingPlans { id name }
+          userErrors { field message }
+        }
+      }
+    `;
+    const planResult = await gql(req.shop, req.token, addPlanMutation, {
+      id: groupId,
       sellingPlans: [{
         name: planName,
         options: [`${count} ${interval.charAt(0) + interval.slice(1).toLowerCase()}`],
@@ -464,12 +498,11 @@ app.post('/api/selling-plans/create', requireAuth, async (req, res) => {
         deliveryPolicy: { recurring: { interval: interval.toUpperCase(), intervalCount: count, anchors: [] } },
         pricingPolicies: [{ fixed: { adjustmentType: 'PERCENTAGE', adjustmentValue: { percentage: pct } } }]
       }]
-    };
-    const result = await gql(req.shop, req.token, mutation, { input });
-    if (result.sellingPlanGroupCreate.userErrors?.length) {
-      throw new Error(result.sellingPlanGroupCreate.userErrors[0].message);
+    });
+    if (planResult.sellingPlanGroupAddSellingPlans.userErrors?.length) {
+      throw new Error(planResult.sellingPlanGroupAddSellingPlans.userErrors[0].message);
     }
-    res.json({ success: true, group: result.sellingPlanGroupCreate.sellingPlanGroup });
+    res.json({ success: true, group: groupResult.sellingPlanGroupCreate.sellingPlanGroup });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
