@@ -179,7 +179,7 @@ app.get('/api/customers', requireAuth, async (req, res) => {
               phone
               createdAt
               numberOfOrders
-              totalSpentV2 { amount currencyCode }
+              totalSpent { amount currencyCode }
               paymentMethods(first: 3) {
                 edges {
                   node {
@@ -205,6 +205,7 @@ app.get('/api/customers', requireAuth, async (req, res) => {
     const customers = data.customers.edges.map(e => ({
       ...e.node,
       ordersCount: e.node.numberOfOrders,
+      totalSpentV2: e.node.totalSpent, // Map to old name for frontend
       hasCard: e.node.paymentMethods.edges.length > 0,
       card: e.node.paymentMethods.edges[0]?.node?.instrument || null
     }));
@@ -440,7 +441,7 @@ app.get('/api/selling-plans', requireAuth, async (req, res) => {
               id
               name
               merchantCode
-              productCount
+              productsCount
               sellingPlans(first: 10) {
                 edges {
                   node {
@@ -465,7 +466,7 @@ app.get('/api/selling-plans', requireAuth, async (req, res) => {
       id: e.node.id,
       name: e.node.name,
       merchantCode: e.node.merchantCode,
-      productCount: e.node.productCount || 0,
+      productCount: e.node.productsCount || 0,
       sellingPlans: e.node.sellingPlans
     }));
     res.json({ success: true, groups });
@@ -492,6 +493,7 @@ app.post('/api/selling-plans/create', requireAuth, async (req, res) => {
     const input = {
       name,
       merchantCode,
+      category: 'SUBSCRIPTION',
       options: ['Delivery every'],
       sellingPlansToCreate: [{
         name: planName,
