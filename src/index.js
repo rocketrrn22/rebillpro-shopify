@@ -441,7 +441,7 @@ app.get('/api/selling-plans', requireAuth, async (req, res) => {
               id
               name
               merchantCode
-              productsCount
+              productsCount { count }
               sellingPlans(first: 10) {
                 edges {
                   node {
@@ -466,7 +466,7 @@ app.get('/api/selling-plans', requireAuth, async (req, res) => {
       id: e.node.id,
       name: e.node.name,
       merchantCode: e.node.merchantCode,
-      productCount: e.node.productsCount || 0,
+      productCount: e.node.productsCount?.count || 0,
       sellingPlans: e.node.sellingPlans
     }));
     res.json({ success: true, groups });
