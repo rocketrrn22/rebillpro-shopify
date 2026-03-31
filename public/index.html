@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RebillPro — Install</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#080a0d;color:#e2e8f0;font-family:'Instrument Sans',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 60% 50% at 50% 0%,rgba(150,191,72,0.06) 0%,transparent 60%);pointer-events:none}
+.card{background:#0e1116;border:1px solid #1e2535;border-radius:20px;padding:44px;width:100%;max-width:480px;text-align:center;position:relative;z-index:1}
+.icon{width:54px;height:54px;background:rgba(150,191,72,0.1);border:1px solid rgba(150,191,72,0.2);border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 18px}
+h1{font-size:24px;font-weight:700;margin-bottom:6px}
+h1 span{color:#96bf48}
+.sub{color:#8892a4;font-size:14px;line-height:1.6;margin-bottom:28px}
+.feats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:28px;text-align:left}
+.feat{background:#141820;border:1px solid #1e2535;border-radius:10px;padding:13px;font-size:12px;color:#8892a4;line-height:1.5}
+.feat strong{color:#96bf48;display:block;margin-bottom:2px;font-size:12px}
+input{width:100%;background:#141820;border:1px solid #283046;border-radius:9px;padding:13px 15px;color:#e2e8f0;font-family:'Fira Code',monospace;font-size:13px;outline:none;margin-bottom:12px;transition:border-color 0.2s}
+input:focus{border-color:#96bf48}
+input::placeholder{color:#3d4a5c}
+button{width:100%;background:#96bf48;color:#fff;border:none;border-radius:9px;padding:14px;font-family:'Instrument Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer;transition:all 0.15s}
+button:hover{background:#aace5a;transform:translateY(-1px)}
+.note{font-size:11px;color:#3d4a5c;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon">🛍</div>
+  <h1>Rebill<span>Pro</span></h1>
+  <p class="sub">Custom subscription & rebilling app for Shopify.<br>Charge customers using their saved Shopify Payments card.</p>
+  <div class="feats">
+    <div class="feat"><strong>💳 Shopify Payments</strong>Uses saved cards directly — no third-party fees</div>
+    <div class="feat"><strong>⚡ Manual Rebill</strong>Charge any customer on demand</div>
+    <div class="feat"><strong>📅 Subscriptions</strong>Set recurring monthly/weekly charges</div>
+    <div class="feat"><strong>🔁 Bulk Charge</strong>Bill all customers at once</div>
+  </div>
+  <input type="text" id="shopInput" placeholder="yourstore.myshopify.com">
+  <button onclick="install()">Install on Shopify →</button>
+  <p class="note">You'll approve permissions in Shopify — takes 30 seconds</p>
+</div>
+<script>
+function install(){
+  let d=document.getElementById('shopInput').value.trim();
+  if(!d)return alert('Enter your Shopify domain');
+  if(!d.includes('.myshopify.com'))d+='.myshopify.com';
+  window.location.href='/auth?shop='+d;
+}
+document.getElementById('shopInput').addEventListener('keypress',e=>{if(e.key==='Enter')install()});
+const s=new URLSearchParams(window.location.search).get('shop');
+if(s){document.getElementById('shopInput').value=s;install();}
+</script>
+</body>
+</html>
