@@ -397,21 +397,27 @@ app.post('/api/checkout/create-prefilled', async (req, res) => {
     // but with Pre-filled address parameters which Shopify supports in their URL engine.
     
     // FORMAT: /cart/{id}:{quantity}?selling_plan={plan}&checkout[email]={email}&checkout[shipping_address][first_name]={fn}...
-    const baseUrl = `https://${shop}/cart/${variantId.split('/').pop()}:1`;
-    const params = new URLSearchParams({
-      selling_plan: sellingPlanId.split('/').pop(),
+    // FORMAT: /cart/add?id={id}&quantity=1&selling_plan={plan}&return_to=/checkout?checkout[email]={email}...
+    const checkoutParams = new URLSearchParams({
       'checkout[email]': email,
       'checkout[shipping_address][first_name]': firstName || '',
       'checkout[shipping_address][last_name]': lastName || '',
       'checkout[shipping_address][address1]': address || '',
       'checkout[shipping_address][city]': city || '',
       'checkout[shipping_address][zip]': zip || '',
-      'checkout[shipping_address][country]': country || 'US',
-      // The secret sauce: force it to the payment step if possible
-      'step': 'payment'
+      'checkout[shipping_address][country]': country || 'FR'
+    });
+
+    const baseUrl = `https://${shop}/cart/add`;
+    const params = new URLSearchParams({
+      id: variantId.split('/').pop(),
+      quantity: 1,
+      selling_plan: sellingPlanId.split('/').pop(),
+      return_to: `/checkout?${checkoutParams.toString()}`
     });
 
     const finalUrl = `${baseUrl}?${params.toString()}`;
+    res.json({ success: true, url: finalUrl });
     res.json({ success: true, url: finalUrl });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
