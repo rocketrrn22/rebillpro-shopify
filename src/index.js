@@ -405,7 +405,8 @@ app.post('/api/checkout/create-prefilled', async (req, res) => {
       'checkout[shipping_address][address1]': address || '',
       'checkout[shipping_address][city]': city || '',
       'checkout[shipping_address][zip]': zip || '',
-      'checkout[shipping_address][country]': country || 'FR'
+      'checkout[shipping_address][country]': country || 'FR',
+      'step': 'payment'
     });
 
     const baseUrl = `https://${shop}/cart/add`;
