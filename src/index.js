@@ -385,9 +385,8 @@ app.post('/api/draft-order', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── GHOST CHECKOUT: PRE-FILLED REDIRECT ──────────────────────────
+// ── GHOST CHECKOUT: ROBUST HEADLESS ENGINE ──────────────────────
 app.post('/api/checkout/create-prefilled', async (req, res) => {
-  // Make it "Lovable Friendly" by supporting different names for the same things
   const { 
     shop = 'jx49ii-v0.myshopify.com', 
     variantId, 
@@ -395,49 +394,61 @@ app.post('/api/checkout/create-prefilled', async (req, res) => {
     email, 
     firstName, 
     lastName, 
-    address,
     address1, 
     city, 
     zip, 
-    country 
+    country = 'FR' 
   } = req.body;
 
-  // Use either 'address' or 'address1'
-  const finalAddress = address || address1 || '';
-
-  if (!variantId || !email) return res.status(400).json({ error: 'Missing variantId or email' });
+  if (!variantId || !email) return res.status(400).json({ error: 'Missing requirements' });
 
   try {
     const token = await getShopToken(shop);
-    // 1. Get a Storefront Access Token if we don't have one (or proxy via Admin API)
-    // For simplicity, we use the Admin API to create a "Checkout Permlink" logic 
-    // but with Pre-filled address parameters which Shopify supports in their URL engine.
     
-    // FORMAT: /cart/{id}:{quantity}?selling_plan={plan}&checkout[email]={email}&checkout[shipping_address][first_name]={fn}...
-    // FORMAT: /cart/add?id={id}&quantity=1&selling_plan={plan}&return_to=/checkout?checkout[email]={email}...
-    const checkoutParams = new URLSearchParams({
-      'checkout[email]': email,
-      'checkout[shipping_address][first_name]': firstName || '',
-      'checkout[shipping_address][last_name]': lastName || '',
-      'checkout[shipping_address][address1]': finalAddress,
-      'checkout[shipping_address][city]': city || '',
-      'checkout[shipping_address][zip]': zip || '',
-      'checkout[shipping_address][country]': country || 'FR',
-      'step': 'payment'
+    // 1. Create a Storefront Access Token if needed
+    const stData = await rest(shop, token, 'storefront_access_tokens.json', 'POST', {
+      storefront_access_token: { title: 'RebillPro Ghost Engine' }
+    });
+    const st = stData.storefront_access_token.access_token;
+
+    // 2. Prepare Variant/Plan GIDs
+    const vId = variantId.split('/').pop();
+    const pId = sellingPlanId ? sellingPlanId.split('/').pop() : null;
+    const variantGid = `gid://shopify/ProductVariant/${vId}`;
+    const planGid = pId ? `gid://shopify/SellingPlan/${pId}` : null;
+
+    // 3. Create Checkout via Storefront API (GraphQL)
+    const storeResponse = await fetch(`https://${shop}/api/2024-10/graphql.json`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Shopify-Storefront-Access-Token': st },
+      body: JSON.stringify({
+        query: `mutation checkoutCreate($input: CheckoutCreateInput!) {
+          checkoutCreate(input: $input) {
+            checkout { webUrl }
+            checkoutUserErrors { message }
+          }
+        }`,
+        variables: {
+          input: {
+            email,
+            shippingAddress: { firstName, lastName, address1, city, zip, country },
+            lineItems: [{ variantId: variantGid, quantity: 1, ...(planGid ? { sellingPlanId: planGid } : {}) }]
+          }
+        }
+      })
     });
 
-    const baseUrl = `https://${shop}/cart/add`;
-    const params = new URLSearchParams({
-      id: variantId.split('/').pop(),
-      quantity: 1,
-      selling_plan: sellingPlanId.split('/').pop(),
-      return_to: `/checkout?${checkoutParams.toString()}`
-    });
+    const sr = await storeResponse.json();
+    const result = sr.data?.checkoutCreate;
+    
+    if (result?.checkoutUserErrors?.length) throw new Error(result.checkoutUserErrors[0].message);
+    if (!result?.checkout?.webUrl) throw new Error('Failed to create checkout object');
 
-    const finalUrl = `${baseUrl}?${params.toString()}`;
-    res.json({ success: true, url: finalUrl });
-    res.json({ success: true, url: finalUrl });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+    res.json({ success: true, url: result.checkout.webUrl });
+  } catch (e) {
+    console.error('Headless Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 async function getShopToken(shop) {
