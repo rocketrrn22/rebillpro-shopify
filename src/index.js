@@ -385,7 +385,42 @@ app.post('/api/draft-order', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── WEBHOOKS ─────────────────────────────────────────────────────
+// ── GHOST CHECKOUT: PRE-FILLED REDIRECT ──────────────────────────
+app.post('/api/checkout/create-prefilled', async (req, res) => {
+  const { shop, variantId, sellingPlanId, email, firstName, lastName, address, city, zip, country } = req.body;
+  if (!shop || !variantId || !email) return res.status(400).json({ error: 'Missing requirements' });
+
+  try {
+    const token = await getShopToken(shop);
+    // 1. Get a Storefront Access Token if we don't have one (or proxy via Admin API)
+    // For simplicity, we use the Admin API to create a "Checkout Permlink" logic 
+    // but with Pre-filled address parameters which Shopify supports in their URL engine.
+    
+    // FORMAT: /cart/{id}:{quantity}?selling_plan={plan}&checkout[email]={email}&checkout[shipping_address][first_name]={fn}...
+    const baseUrl = `https://${shop}/cart/${variantId.split('/').pop()}:1`;
+    const params = new URLSearchParams({
+      selling_plan: sellingPlanId.split('/').pop(),
+      'checkout[email]': email,
+      'checkout[shipping_address][first_name]': firstName || '',
+      'checkout[shipping_address][last_name]': lastName || '',
+      'checkout[shipping_address][address1]': address || '',
+      'checkout[shipping_address][city]': city || '',
+      'checkout[shipping_address][zip]': zip || '',
+      'checkout[shipping_address][country]': country || 'US',
+      // The secret sauce: force it to the payment step if possible
+      'step': 'payment'
+    });
+
+    const finalUrl = `${baseUrl}?${params.toString()}`;
+    res.json({ success: true, url: finalUrl });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+async function getShopToken(shop) {
+  // Helper to get token (implementation depends on your DB logic)
+  return process.env.SHOPIFY_ACCESS_TOKEN; // Simplified for now
+}
+
 const WEBHOOK_TOPICS = [
   'subscription_contracts/create',
   'subscription_contracts/update',
