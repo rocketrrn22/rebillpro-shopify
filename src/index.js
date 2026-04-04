@@ -592,7 +592,7 @@ app.post('/api/selling-plans/create', requireAuth, async (req, res) => {
     const input = {
       name,
       merchantCode,
-      options: ['.'],
+      options: ['Delivery'],
       sellingPlansToCreate: [{
         name: '.',
         category: 'SUBSCRIPTION',
