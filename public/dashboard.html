@@ -777,7 +777,7 @@ function renderPlans(list){
         <td style="font-family:var(--mono);font-size:12px">${plans.length}</td>
         <td>${prodList || '<span class="tag a">No Products Assigned</span>'}</td>
         <td style="font-size:12px;color:var(--text2)">${interval}</td>
-        <td><button class="btn btn-red btn-xs">Delete</button></td>
+        <td><button class="btn btn-red btn-xs" onclick="deletePlan('${g.id}')">Delete</button></td>
       </tr>`;
     }).join('');
   } catch (e) {
@@ -826,6 +826,12 @@ async function createPlan(){
   btn.disabled=false;
   document.getElementById('createPlanTxt').textContent='Create Plan';
   if(r.success){closeM('createPlanMo');toast('✅ Selling plan created!','s');await loadSellingPlans();}
+  else toast('Failed: '+r.error,'e');
+}
+async function deletePlan(id){
+  if(!confirm('Delete this selling plan group?'))return;
+  const r=await api('/api/selling-plans/delete','POST',{sellingPlanGroupId:id});
+  if(r.success){toast('✅ Plan deleted','s');await loadSellingPlans();}
   else toast('Failed: '+r.error,'e');
 }
 

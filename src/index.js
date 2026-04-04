@@ -578,7 +578,7 @@ app.post('/api/selling-plans/create', requireAuth, async (req, res) => {
     const merchantCode = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     const count = parseInt(intervalCount) || 1;
     const pct = parseFloat(discount) || 0;
-    const planName = `Delivery every ${count} ${interval.toLowerCase()}${count > 1 ? 's' : ''}`;
+    const planName = ` `;
     
     const mutation = `
       mutation sellingPlanGroupCreate($input: SellingPlanGroupInput!) {
@@ -592,11 +592,12 @@ app.post('/api/selling-plans/create', requireAuth, async (req, res) => {
     const input = {
       name,
       merchantCode,
-      options: ['Delivery every'],
+      options: [' '],
       sellingPlansToCreate: [{
-        name: planName,
+        name: ' ',
         category: 'SUBSCRIPTION',
-        options: [`${count} ${interval.charAt(0) + interval.slice(1).toLowerCase()}`],
+        description: ' ',
+        options: [' '],
         billingPolicy: {
           recurring: { interval: interval.toUpperCase(), intervalCount: count }
         },
@@ -615,11 +616,11 @@ app.post('/api/selling-plans/create', requireAuth, async (req, res) => {
     };
 
     const result = await gql(req.shop, req.token, mutation, { input });
-    if (result.sellingPlanGroupCreate.userErrors?.length) {
-      throw new Error(result.sellingPlanGroupCreate.userErrors[0].message);
+    if (!result?.sellingPlanGroupCreate?.sellingPlanGroup) {
+      throw new Error(result?.sellingPlanGroupCreate?.userErrors?.[0]?.message || 'Failed to create selling plan group');
     }
     res.json({ success: true, group: result.sellingPlanGroupCreate.sellingPlanGroup });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
 app.post('/api/selling-plans/assign', requireAuth, async (req, res) => {
@@ -639,6 +640,25 @@ app.post('/api/selling-plans/assign', requireAuth, async (req, res) => {
     }
     res.json({ success: true, group: result.sellingPlanGroupAddProducts.sellingPlanGroup });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/selling-plans/delete', requireAuth, async (req, res) => {
+  const { sellingPlanGroupId } = req.body;
+  try {
+    const mutation = `
+      mutation sellingPlanGroupDelete($id: ID!) {
+        sellingPlanGroupDelete(id: $id) {
+          deletedSellingPlanGroupId
+          userErrors { field message }
+        }
+      }
+    `;
+    const result = await gql(req.shop, req.token, mutation, { id: sellingPlanGroupId });
+    if (!result?.sellingPlanGroupDelete?.deletedSellingPlanGroupId) {
+      throw new Error(result?.sellingPlanGroupDelete?.userErrors?.[0]?.message || 'Failed to delete selling plan group');
+    }
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
 // ── START ───────────────────────────────────────────────────────
