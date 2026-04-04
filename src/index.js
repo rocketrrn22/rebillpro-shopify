@@ -594,7 +594,7 @@ app.post('/api/selling-plans/create', requireAuth, async (req, res) => {
       merchantCode,
       options: [' '],
       sellingPlansToCreate: [{
-        name: ' ',
+        name: '.',
         category: 'SUBSCRIPTION',
         description: ' ',
         options: [' '],
