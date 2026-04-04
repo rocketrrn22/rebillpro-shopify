@@ -597,7 +597,7 @@ app.post('/api/selling-plans/create', requireAuth, async (req, res) => {
         name: '.',
         category: 'SUBSCRIPTION',
         description: '.',
-        options: ['.'],
+        options: [`${count} ${interval.toLowerCase()}${count > 1 ? 's' : ''}`],
         billingPolicy: {
           recurring: { interval: interval.toUpperCase(), intervalCount: count }
         },
