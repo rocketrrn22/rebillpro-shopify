@@ -284,19 +284,25 @@ code{background:var(--s3);color:var(--sh);padding:2px 6px;border-radius:4px;font
       <!-- SELLING PLANS -->
       <div class="page" id="page-selling-plans">
         <div style="background:linear-gradient(135deg,rgba(56,189,248,0.08),transparent);border:1px solid rgba(56,189,248,0.2);border-radius:11px;padding:16px 20px;margin-bottom:16px">
-          <h3 style="font-size:13px;font-weight:600;margin-bottom:6px">Why Selling Plans?</h3>
-          <p style="font-size:12px;color:var(--text2);line-height:1.7">Shopify only saves a customer's payment method when they buy through a <strong style="color:var(--text)">Selling Plan</strong> at checkout. Without one, no card gets vaulted and subscription billing won't work.<br>
-          <strong style="color:var(--sh)">Setup flow:</strong> Create a plan below → assign it to your products in Shopify admin → customers subscribe at checkout → card is saved → you can rebill anytime.</p>
+          <h3 style="font-size:13px;font-weight:600;margin-bottom:6px">How to set up Selling Plans</h3>
+          <p style="font-size:12px;color:var(--text2);line-height:1.8">
+            Selling plans must be created directly in Shopify Admin — this saves the customer's card automatically at checkout so you can rebill them here.<br><br>
+            <strong style="color:var(--sh)">Setup flow:</strong><br>
+            1. Click <strong style="color:var(--text)">"Create in Shopify Admin ↗"</strong> below<br>
+            2. Click <strong style="color:var(--text)">"Create selling plan group"</strong> → fill in name + billing frequency<br>
+            3. Go to your product → <strong style="color:var(--text)">Purchase options</strong> → assign the plan<br>
+            4. Customer buys → card is saved → rebill from the <strong style="color:var(--text)">Subscriptions</strong> tab
+          </p>
         </div>
         <div class="card">
           <div class="card-head">
             <div class="card-title">Selling Plan Groups <span class="pill" id="planCount">0</span></div>
             <div style="display:flex;gap:6px">
               <button class="btn btn-ghost btn-sm" onclick="loadSellingPlans()">↻</button>
-              <button class="btn btn-sh btn-sm" onclick="document.getElementById('createPlanMo').style.display='flex'">+ Create Plan</button>
+              <a class="btn btn-sh btn-sm" id="adminPlanLink" href="#" target="_blank">+ Create in Shopify Admin ↗</a>
             </div>
           </div>
-          <div class="tw"><table><thead><tr><th>Name</th><th>Plans</th><th>Products &amp; Variants (for Lovable)</th><th>Interval</th><th>Actions</th></tr></thead><tbody id="planTb"></tbody></table></div>
+          <div class="tw"><table><thead><tr><th>Name</th><th>Plans</th><th>Products Assigned</th><th>Interval</th></tr></thead><tbody id="planTb"></tbody></table></div>
         </div>
       </div>
 
@@ -735,13 +741,17 @@ document.querySelectorAll('.mo').forEach(o=>o.addEventListener('click',e=>{if(e.
 // ── SELLING PLANS ────────────────────────────────────────────────
 let sellingPlans=[];
 async function loadSellingPlans(){
+  document.getElementById('adminPlanLink').href=`https://${shop}/admin/selling_plan_groups`;
   try{
     const d=await api('/api/selling-plans');
     if(!d.success)throw new Error(d.error);
     sellingPlans=d.groups;
     document.getElementById('planCount').textContent=sellingPlans.length;
     renderPlans(sellingPlans);
-  }catch(e){toast('Selling Plans: '+e.message,'e');}
+  }catch(e){
+    document.getElementById('planCount').textContent='—';
+    document.getElementById('planTb').innerHTML=`<tr><td colspan="4"><div class="empty"><h4>Create plans in Shopify Admin</h4><p>Click "Create in Shopify Admin ↗" above to set up selling plans</p></div></td></tr>`;
+  }
 }
 function renderPlans(list){
   const tb = document.getElementById('planTb');
