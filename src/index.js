@@ -578,7 +578,7 @@ app.post('/api/selling-plans/create', requireAuth, async (req, res) => {
     const merchantCode = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     const count = parseInt(intervalCount) || 1;
     const pct = parseFloat(discount) || 0;
-    const planName = ` `;
+    const planName = `Delivery every ${count} ${interval.toLowerCase()}${count > 1 ? 's' : ''}`;
     
     const mutation = `
       mutation sellingPlanGroupCreate($input: SellingPlanGroupInput!) {
@@ -594,10 +594,9 @@ app.post('/api/selling-plans/create', requireAuth, async (req, res) => {
       merchantCode,
       options: ['Delivery'],
       sellingPlansToCreate: [{
-        name: '.',
+        name: planName,
         category: 'SUBSCRIPTION',
-        description: '.',
-        options: [`${count} ${interval.toLowerCase()}${count > 1 ? 's' : ''}`],
+        options: [`${count} ${interval.charAt(0) + interval.slice(1).toLowerCase()}`],
         billingPolicy: {
           recurring: { interval: interval.toUpperCase(), intervalCount: count }
         },
