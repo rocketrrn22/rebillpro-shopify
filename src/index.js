@@ -579,23 +579,36 @@ app.post('/api/selling-plans/create', requireAuth, async (req, res) => {
     const count = parseInt(intervalCount) || 1;
     const pct = parseFloat(discount) || 0;
     const planName = `Delivery every ${count} ${interval.toLowerCase()}${count > 1 ? 's' : ''}`;
-    const body = {
-      selling_plan_group: {
-        name,
-        merchant_code: merchantCode,
-        options: ['Delivery every'],
-        selling_plans: [{
-          name: planName,
-          options: [`${count} ${interval.charAt(0) + interval.slice(1).toLowerCase()}`],
-          billing_policy: { interval: interval.toLowerCase(), interval_count: count },
-          delivery_policy: { interval: interval.toLowerCase(), interval_count: count },
-          ...(pct > 0 && { pricing_policies: [{ adjustment_type: 'percentage', adjustment_value: String(pct) }] })
-        }]
+
+    const mutation = `
+      mutation sellingPlanGroupCreate($input: SellingPlanGroupInput!) {
+        sellingPlanGroupCreate(input: $input) {
+          sellingPlanGroup { id name merchantCode }
+          userErrors { field message }
+        }
       }
+    `;
+    const input = {
+      name,
+      merchantCode,
+      options: ['Delivery every'],
+      sellingPlans: [{
+        name: planName,
+        options: [`${count} ${interval.charAt(0) + interval.slice(1).toLowerCase()}`],
+        category: 'SUBSCRIPTION',
+        billingPolicy: { recurring: { interval: interval.toUpperCase(), intervalCount: count } },
+        deliveryPolicy: { recurring: { interval: interval.toUpperCase(), intervalCount: count } },
+        ...(pct > 0 && { pricingPolicies: [{ fixed: { adjustmentType: 'PERCENTAGE', adjustmentValue: { percentage: pct } } }] })
+      }]
     };
-    const d = await rest(req.shop, req.token, 'selling_plan_groups.json', 'POST', body);
-    if (d.errors) throw new Error(JSON.stringify(d.errors));
-    res.json({ success: true, group: d.selling_plan_group });
+    const result = await gql(req.shop, req.token, mutation, { input });
+    if (result.sellingPlanGroupCreate.userErrors?.length) {
+      throw new Error(result.sellingPlanGroupCreate.userErrors[0].message);
+    }
+    if (!result.sellingPlanGroupCreate.sellingPlanGroup) {
+      throw new Error('Failed to create selling plan group — check your app has subscription scopes');
+    }
+    res.json({ success: true, group: result.sellingPlanGroupCreate.sellingPlanGroup });
   } catch (e) { res.status(500).json({ success: false, error: e.message }); }
 });
 
