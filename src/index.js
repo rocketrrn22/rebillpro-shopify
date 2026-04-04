@@ -591,7 +591,7 @@ app.post('/api/selling-plans/create', requireAuth, async (req, res) => {
       name,
       merchantCode,
       options: ['Delivery every'],
-      sellingPlans: [{
+      sellingPlansToCreate: [{
         name: planName,
         options: [`${count} ${interval.charAt(0) + interval.slice(1).toLowerCase()}`],
         category: 'SUBSCRIPTION',
