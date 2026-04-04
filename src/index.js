@@ -592,12 +592,12 @@ app.post('/api/selling-plans/create', requireAuth, async (req, res) => {
     const input = {
       name,
       merchantCode,
-      options: [' '],
+      options: ['.'],
       sellingPlansToCreate: [{
         name: '.',
         category: 'SUBSCRIPTION',
-        description: ' ',
-        options: [' '],
+        description: '.',
+        options: ['.'],
         billingPolicy: {
           recurring: { interval: interval.toUpperCase(), intervalCount: count }
         },
