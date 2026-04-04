@@ -586,12 +586,12 @@ app.post('/api/selling-plans/create', requireAuth, async (req, res) => {
         }
       }
     `;
-    const planName = `.`;
+    const planName = `Delivery every ${count} ${interval.toLowerCase()}${count > 1 ? 's' : ''}`;
     const input = {
       name,
       merchantCode,
-      options: ['Delivery'],
-      sellingPlansToCreate: [{
+      options: ['Delivery every'],
+      sellingPlans: [{
         name: planName,
         options: [`${count} ${interval.charAt(0) + interval.slice(1).toLowerCase()}`],
         category: 'SUBSCRIPTION',
