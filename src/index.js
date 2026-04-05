@@ -46,7 +46,18 @@ const store = {
   webhookEvents: []
 };
 
-// Auto-load token from env vars (custom app setup — no OAuth needed)
+// Auto-load tokens from env vars — supports multiple stores
+// Format: SHOPIFY_SHOP_1=store1.myshopify.com, SHOPIFY_TOKEN_1=shpat_...
+//         SHOPIFY_SHOP_2=store2.myshopify.com, SHOPIFY_TOKEN_2=shpat_...
+// Also supports legacy: SHOPIFY_SHOP + SHOPIFY_ACCESS_TOKEN
+for (let i = 1; i <= 10; i++) {
+  const s = process.env[`SHOPIFY_SHOP_${i}`];
+  const t = process.env[`SHOPIFY_TOKEN_${i}`];
+  if (s && t) {
+    store.shops[s] = { accessToken: t, shop: s, at: new Date().toISOString() };
+    console.log(`✅ Loaded token from env for ${s}`);
+  }
+}
 if (process.env.SHOPIFY_SHOP && process.env.SHOPIFY_ACCESS_TOKEN) {
   const s = process.env.SHOPIFY_SHOP;
   store.shops[s] = { accessToken: process.env.SHOPIFY_ACCESS_TOKEN, shop: s, at: new Date().toISOString() };
@@ -155,6 +166,12 @@ app.get('/dashboard', (req, res) => {
 app.get('/api/status', (req, res) => {
   const shop = req.query.shop;
   res.json({ connected: !!(shop && store.shops[shop]), shop, appUrl: APP_URL });
+});
+
+// ── API: CONNECTED STORES ────────────────────────────────────────
+app.get('/api/stores', (req, res) => {
+  const shops = Object.keys(store.shops).map(s => ({ shop: s, at: store.shops[s].at }));
+  res.json({ success: true, shops });
 });
 
 // ── API: SHOP INFO ──────────────────────────────────────────────
