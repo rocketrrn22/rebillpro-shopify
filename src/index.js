@@ -174,6 +174,35 @@ app.get('/api/stores', (req, res) => {
   res.json({ success: true, shops });
 });
 
+// ── API: ADD STORE MANUALLY (custom app token) ───────────────────
+app.post('/api/stores/add', async (req, res) => {
+  const { shop, token } = req.body;
+  if (!shop || !token) return res.status(400).json({ error: 'shop and token required' });
+  const domain = shop.replace('https://', '').replace('http://', '').replace(/\/$/, '');
+  // Verify token works by calling shop endpoint
+  try {
+    const r = await fetch(`https://${domain}/admin/api/2024-10/shop.json`, {
+      headers: { 'X-Shopify-Access-Token': token, 'Accept': 'application/json' }
+    });
+    if (r.status === 401) throw new Error('Invalid token — check the shpat_ value');
+    if (!r.ok) throw new Error(`Shopify returned ${r.status}`);
+    const d = await r.json();
+    store.shops[domain] = { accessToken: token, shop: domain, at: new Date().toISOString(), name: d.shop?.name };
+    saveStore();
+    console.log(`✅ Added store manually: ${domain}`);
+    res.json({ success: true, shop: domain, name: d.shop?.name });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// ── API: REMOVE STORE ────────────────────────────────────────────
+app.post('/api/stores/remove', (req, res) => {
+  const { shop } = req.body;
+  if (!shop || !store.shops[shop]) return res.status(404).json({ error: 'Store not found' });
+  delete store.shops[shop];
+  saveStore();
+  res.json({ success: true });
+});
+
 // ── API: SHOP INFO ──────────────────────────────────────────────
 app.get('/api/shop', requireAuth, async (req, res) => {
   try {

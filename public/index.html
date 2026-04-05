@@ -3,53 +3,163 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RebillPro — Install</title>
+<title>RebillPro — Connect Store</title>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#080a0d;color:#e2e8f0;font-family:'Instrument Sans',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
 body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 60% 50% at 50% 0%,rgba(150,191,72,0.06) 0%,transparent 60%);pointer-events:none}
-.card{background:#0e1116;border:1px solid #1e2535;border-radius:20px;padding:44px;width:100%;max-width:480px;text-align:center;position:relative;z-index:1}
-.icon{width:54px;height:54px;background:rgba(150,191,72,0.1);border:1px solid rgba(150,191,72,0.2);border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 18px}
-h1{font-size:24px;font-weight:700;margin-bottom:6px}
+.wrap{width:100%;max-width:520px;position:relative;z-index:1}
+.card{background:#0e1116;border:1px solid #1e2535;border-radius:20px;padding:36px;margin-bottom:12px}
+.icon{width:48px;height:48px;background:rgba(150,191,72,0.1);border:1px solid rgba(150,191,72,0.2);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:14px}
+h1{font-size:22px;font-weight:700;margin-bottom:4px}
 h1 span{color:#96bf48}
-.sub{color:#8892a4;font-size:14px;line-height:1.6;margin-bottom:28px}
-.feats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:28px;text-align:left}
-.feat{background:#141820;border:1px solid #1e2535;border-radius:10px;padding:13px;font-size:12px;color:#8892a4;line-height:1.5}
-.feat strong{color:#96bf48;display:block;margin-bottom:2px;font-size:12px}
-input{width:100%;background:#141820;border:1px solid #283046;border-radius:9px;padding:13px 15px;color:#e2e8f0;font-family:'Fira Code',monospace;font-size:13px;outline:none;margin-bottom:12px;transition:border-color 0.2s}
+.sub{color:#8892a4;font-size:13px;line-height:1.6;margin-bottom:22px}
+.tabs{display:flex;gap:6px;margin-bottom:20px;background:#141820;border-radius:9px;padding:4px}
+.tab{flex:1;padding:8px;text-align:center;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;color:#8892a4;transition:all 0.15s}
+.tab.active{background:#96bf48;color:#fff}
+.section{display:none}
+.section.active{display:block}
+label{display:block;font-size:10px;color:#8892a4;font-family:'Fira Code',monospace;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:5px}
+input{width:100%;background:#141820;border:1px solid #283046;border-radius:9px;padding:11px 13px;color:#e2e8f0;font-family:'Fira Code',monospace;font-size:12px;outline:none;margin-bottom:12px;transition:border-color 0.2s}
 input:focus{border-color:#96bf48}
 input::placeholder{color:#3d4a5c}
-button{width:100%;background:#96bf48;color:#fff;border:none;border-radius:9px;padding:14px;font-family:'Instrument Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer;transition:all 0.15s}
-button:hover{background:#aace5a;transform:translateY(-1px)}
-.note{font-size:11px;color:#3d4a5c;margin-top:10px}
+.btn{width:100%;background:#96bf48;color:#fff;border:none;border-radius:9px;padding:13px;font-family:'Instrument Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.15s}
+.btn:hover{background:#aace5a;transform:translateY(-1px)}
+.btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+.info{background:rgba(150,191,72,0.07);border:1px solid rgba(150,191,72,0.15);border-radius:9px;padding:11px 13px;font-size:12px;color:#8892a4;line-height:1.6;margin-bottom:14px}
+.info strong{color:#96bf48}
+.note{font-size:11px;color:#3d4a5c;margin-top:8px;text-align:center}
+.err{background:rgba(244,63,94,0.08);border:1px solid rgba(244,63,94,0.2);border-radius:9px;padding:10px 13px;font-size:12px;color:#f43f5e;margin-bottom:12px;display:none}
+.stores-list{margin-top:16px}
+.store-item{display:flex;align-items:center;justify-content:space-between;background:#141820;border:1px solid #1e2535;border-radius:9px;padding:11px 14px;margin-bottom:8px}
+.store-domain{font-family:'Fira Code',monospace;font-size:12px;color:#96bf48}
+.store-name{font-size:11px;color:#8892a4;margin-top:2px}
+.store-actions{display:flex;gap:6px}
+.sbtn{padding:5px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:none;font-family:'Instrument Sans',sans-serif}
+.sbtn-open{background:rgba(150,191,72,0.15);color:#96bf48}
+.sbtn-remove{background:rgba(244,63,94,0.1);color:#f43f5e}
+.empty{text-align:center;color:#3d4a5c;padding:20px;font-size:13px}
 </style>
 </head>
 <body>
-<div class="card">
-  <div class="icon">🛍</div>
-  <h1>Rebill<span>Pro</span></h1>
-  <p class="sub">Custom subscription & rebilling app for Shopify.<br>Charge customers using their saved Shopify Payments card.</p>
-  <div class="feats">
-    <div class="feat"><strong>💳 Shopify Payments</strong>Uses saved cards directly — no third-party fees</div>
-    <div class="feat"><strong>⚡ Manual Rebill</strong>Charge any customer on demand</div>
-    <div class="feat"><strong>📅 Subscriptions</strong>Set recurring monthly/weekly charges</div>
-    <div class="feat"><strong>🔁 Bulk Charge</strong>Bill all customers at once</div>
+<div class="wrap">
+  <div class="card">
+    <div class="icon">🛍</div>
+    <h1>Rebill<span>Pro</span></h1>
+    <p class="sub">Connect any Shopify store — use OAuth for stores in your Partners org, or paste a custom app token for any other store.</p>
+
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('token',this)">Custom App Token</div>
+      <div class="tab" onclick="switchTab('oauth',this)">OAuth Install</div>
+    </div>
+
+    <!-- TOKEN TAB -->
+    <div class="section active" id="sec-token">
+      <div class="info">
+        <strong>How to get a token:</strong><br>
+        1. Go to your store admin → Settings → Apps → Develop apps<br>
+        2. Create an app → configure scopes → Install<br>
+        3. Copy the <strong>Admin API access token</strong> (starts with shpat_)
+      </div>
+      <div class="err" id="tokenErr"></div>
+      <label>Store domain</label>
+      <input type="text" id="tokenShop" placeholder="yourstore.myshopify.com">
+      <label>Admin API access token</label>
+      <input type="text" id="tokenVal" placeholder="shpat_...">
+      <button class="btn" id="tokenBtn" onclick="addToken()">Connect Store →</button>
+    </div>
+
+    <!-- OAUTH TAB -->
+    <div class="section" id="sec-oauth">
+      <div class="info">
+        <strong>OAuth install</strong> works for stores inside your Shopify Partners organization. If you get a "same organization" error, use the Custom App Token tab instead.
+      </div>
+      <div class="err" id="oauthErr"></div>
+      <label>Store domain</label>
+      <input type="text" id="oauthShop" placeholder="yourstore.myshopify.com">
+      <button class="btn" onclick="oauthInstall()">Install via OAuth →</button>
+    </div>
+
+    <!-- CONNECTED STORES -->
+    <div class="stores-list" id="storesList"></div>
   </div>
-  <input type="text" id="shopInput" placeholder="yourstore.myshopify.com">
-  <button onclick="install()">Install on Shopify →</button>
-  <p class="note">You'll approve permissions in Shopify — takes 30 seconds</p>
+  <div class="note">RebillPro — Subscription & Rebilling for Shopify</div>
 </div>
+
 <script>
-function install(){
-  let d=document.getElementById('shopInput').value.trim();
-  if(!d)return alert('Enter your Shopify domain');
-  if(!d.includes('.myshopify.com'))d+='.myshopify.com';
-  window.location.href='/auth?shop='+d;
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('sec-' + tab).classList.add('active');
 }
-document.getElementById('shopInput').addEventListener('keypress',e=>{if(e.key==='Enter')install()});
-const s=new URLSearchParams(window.location.search).get('shop');
-if(s){document.getElementById('shopInput').value=s;install();}
+
+async function addToken() {
+  const shop = document.getElementById('tokenShop').value.trim();
+  const token = document.getElementById('tokenVal').value.trim();
+  const err = document.getElementById('tokenErr');
+  err.style.display = 'none';
+  if (!shop) { err.textContent = 'Enter your store domain'; err.style.display = 'block'; return; }
+  if (!token || !token.startsWith('shpat_')) { err.textContent = 'Token must start with shpat_'; err.style.display = 'block'; return; }
+  const btn = document.getElementById('tokenBtn');
+  btn.disabled = true; btn.textContent = 'Connecting...';
+  try {
+    const r = await fetch('/api/stores/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shop, token })
+    });
+    const d = await r.json();
+    if (!d.success) throw new Error(d.error);
+    window.location.href = '/dashboard?shop=' + d.shop;
+  } catch (e) {
+    err.textContent = e.message; err.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Connect Store →';
+  }
+}
+
+function oauthInstall() {
+  let shop = document.getElementById('oauthShop').value.trim();
+  const err = document.getElementById('oauthErr');
+  err.style.display = 'none';
+  if (!shop) { err.textContent = 'Enter your store domain'; err.style.display = 'block'; return; }
+  if (!shop.includes('.myshopify.com')) shop += '.myshopify.com';
+  window.location.href = '/auth?shop=' + shop;
+}
+
+async function loadStores() {
+  try {
+    const r = await fetch('/api/stores');
+    const d = await r.json();
+    const list = document.getElementById('storesList');
+    if (!d.shops.length) { list.innerHTML = '<div class="empty">No stores connected yet</div>'; return; }
+    list.innerHTML = '<div style="font-size:10px;color:#3d4a5c;font-family:\'Fira Code\',monospace;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">Connected Stores</div>' +
+      d.shops.map(s => `
+        <div class="store-item">
+          <div>
+            <div class="store-domain">${s.shop}</div>
+            <div class="store-name">${s.name || 'Connected'}</div>
+          </div>
+          <div class="store-actions">
+            <button class="sbtn sbtn-open" onclick="window.location='/dashboard?shop=${s.shop}'">Open →</button>
+            <button class="sbtn sbtn-remove" onclick="removeStore('${s.shop}')">Remove</button>
+          </div>
+        </div>`).join('');
+  } catch(e) {}
+}
+
+async function removeStore(shop) {
+  if (!confirm('Remove ' + shop + '?')) return;
+  await fetch('/api/stores/remove', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ shop }) });
+  loadStores();
+}
+
+document.getElementById('tokenShop').addEventListener('keypress', e => { if(e.key==='Enter') document.getElementById('tokenVal').focus(); });
+document.getElementById('tokenVal').addEventListener('keypress', e => { if(e.key==='Enter') addToken(); });
+document.getElementById('oauthShop').addEventListener('keypress', e => { if(e.key==='Enter') oauthInstall(); });
+
+loadStores();
 </script>
 </body>
 </html>
