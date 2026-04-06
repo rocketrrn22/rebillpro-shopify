@@ -118,6 +118,15 @@ function requireAuth(req, res, next) {
   next();
 }
 
+// ── DEBUG ────────────────────────────────────────────────────────
+app.get('/debug', (req, res) => {
+  res.json({
+    SHOPIFY_API_KEY: SHOPIFY_API_KEY ? SHOPIFY_API_KEY.slice(0,8)+'...' : 'MISSING',
+    APP_URL,
+    shops: Object.keys(store.shops)
+  });
+});
+
 // ── AUTH ────────────────────────────────────────────────────────
 app.get('/auth', (req, res) => {
   const shop = req.query.shop;
