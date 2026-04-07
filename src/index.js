@@ -483,20 +483,32 @@ app.post('/api/subscriptions/cancel', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── HELPER: get or create a hidden "Manual Charge" product variant ─
-async function getManualChargeVariantId(shop, token) {
+// ── HELPER: get or create hidden charge product, update title + price ─
+async function getManualChargeVariantId(shop, token, title, price) {
   const data = await rest(shop, token, 'products.json?title=RebillPro+Manual+Charge&limit=1');
+  let productId, variantId;
   if (data.products?.length > 0) {
-    return `gid://shopify/ProductVariant/${data.products[0].variants[0].id}`;
+    productId = data.products[0].id;
+    variantId = data.products[0].variants[0].id;
+  } else {
+    const d = await rest(shop, token, 'products.json', 'POST', {
+      product: {
+        title: 'RebillPro Manual Charge',
+        status: 'draft',
+        variants: [{ price: price, requires_shipping: false }]
+      }
+    });
+    productId = d.product.id;
+    variantId = d.product.variants[0].id;
   }
-  const d = await rest(shop, token, 'products.json', 'POST', {
-    product: {
-      title: 'RebillPro Manual Charge',
-      status: 'draft',
-      variants: [{ price: '0.00', requires_shipping: false }]
-    }
+  // Update title and price to match this charge
+  await rest(shop, token, `products/${productId}.json`, 'PUT', {
+    product: { id: productId, title: title || 'Manual Charge' }
   });
-  return `gid://shopify/ProductVariant/${d.product.variants[0].id}`;
+  await rest(shop, token, `variants/${variantId}.json`, 'PUT', {
+    variant: { id: variantId, price: price }
+  });
+  return `gid://shopify/ProductVariant/${variantId}`;
 }
 
 // ── API: INSTANT CHARGE (uses saved card via subscription billing) ─
@@ -518,7 +530,7 @@ app.post('/api/charge-instant', requireAuth, async (req, res) => {
     const paymentMethodId = custData.customer.paymentMethods.edges[0].node.id;
 
     // 2. Get or create a dummy product variant (required by subscription line API)
-    const variantId = await getManualChargeVariantId(req.shop, req.token);
+    const variantId = await getManualChargeVariantId(req.shop, req.token, note || 'Manual Charge', (amount / 100).toFixed(2));
 
     // 3. Create subscription contract draft (no lineItems here)
     const createResult = await gql(req.shop, req.token, `
