@@ -495,7 +495,7 @@ app.post('/api/charge-instant', requireAuth, async (req, res) => {
       input: {
         productVariantId: variantId,
         quantity: 1,
-        currentPrice: { amount: (amount / 100).toFixed(2), currencyCode: cur }
+        currentPrice: (amount / 100).toFixed(2)
       }
     });
     if (lineResult.subscriptionDraftLineAdd.userErrors?.length) {
