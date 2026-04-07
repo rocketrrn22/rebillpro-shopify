@@ -237,7 +237,7 @@ code{background:var(--s3);color:var(--sh);padding:2px 6px;border-radius:4px;font
           <p style="font-size:12px;color:var(--text2);margin-bottom:18px;line-height:1.5">Instantly charge a customer's saved card. Customer must have purchased via a selling plan for their card to be saved.</p>
           <div class="fr" style="margin-bottom:12px">
             <div class="fg"><label class="fl">Amount (€)</label><input type="number" class="fi" id="cAmt" placeholder="29.99" step="0.01" min="0.50"></div>
-            <div class="fg" style="max-width:120px"><label class="fl">Currency</label><select class="fi" id="cCur"><option value="EUR" selected>EUR</option><option value="USD">USD</option><option value="GBP">GBP</option><option value="CAD">CAD</option></select></div>
+            <div class="fg" style="max-width:150px"><label class="fl">Currency (auto)</label><input class="fi" id="cCur" readonly style="color:var(--text2);cursor:not-allowed" value="Auto (store currency)"></div>
           </div>
           <div class="fg" style="margin-bottom:12px"><label class="fl">Description</label><input type="text" class="fi" id="cNote" placeholder="Manual charge"></div>
           <div style="display:flex;gap:9px;margin-bottom:12px">

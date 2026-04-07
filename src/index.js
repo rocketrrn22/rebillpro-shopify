@@ -513,9 +513,12 @@ async function getManualChargeVariantId(shop, token, title, price) {
 
 // ── API: INSTANT CHARGE (reuse existing subscription contract) ─────
 app.post('/api/charge-instant', requireAuth, async (req, res) => {
-  const { customerId, amount, currency, note } = req.body;
-  const cur = (currency || 'EUR').toUpperCase();
+  const { customerId, amount, note } = req.body;
   const priceStr = (amount / 100).toFixed(2);
+
+  // Always use the store's actual currency to avoid payment errors
+  const shopData = await rest(req.shop, req.token, 'shop.json');
+  const cur = shopData.shop?.currency || 'USD';
   const title = note || 'Manual Charge';
   try {
     // 1. Find customer's existing ACTIVE subscription contract
