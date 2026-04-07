@@ -516,17 +516,15 @@ app.post('/api/charge-instant', requireAuth, async (req, res) => {
   const { customerId, amount, note } = req.body;
   const priceStr = (amount / 100).toFixed(2);
 
-  // Always use the store's actual currency to avoid payment errors
-  const shopData = await rest(req.shop, req.token, 'shop.json');
-  const cur = shopData.shop?.currency || 'USD';
+  // Will be determined from the customer's existing contract currency
   const title = note || 'Manual Charge';
   try {
-    // 1. Find customer's existing ACTIVE subscription contract
+    // 1. Find customer's existing ACTIVE subscription contract (with its currency)
     const contractData = await gql(req.shop, req.token, `
       query($id: ID!) {
         customer(id: $id) {
           subscriptionContracts(first: 1) {
-            edges { node { id status lines(first:1) { edges { node { id } } } } }
+            edges { node { id status currencyCode lines(first:1) { edges { node { id } } } } }
           }
         }
       }
@@ -536,9 +534,10 @@ app.post('/api/charge-instant', requireAuth, async (req, res) => {
     const activeContract = contracts.find(e => e.node.status === 'ACTIVE');
 
     let contractId;
+    const cur = activeContract ? (activeContract.node.currencyCode || 'EUR') : 'EUR';
 
     if (activeContract) {
-      // 2a. Reuse existing contract — update price via draft
+      // 2a. Reuse existing contract — use its own currency
       contractId = activeContract.node.id;
       const lineId = activeContract.node.lines.edges[0]?.node?.id;
 
