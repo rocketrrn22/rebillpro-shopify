@@ -483,9 +483,10 @@ app.post('/api/charge-instant', requireAuth, async (req, res) => {
 
     // 4. Add line item to draft
     const lineResult = await gql(req.shop, req.token, `
-      mutation($draftId: ID!, $input: SubscriptionDraftLineAddInput!) {
+      mutation($draftId: ID!, $input: SubscriptionLineInput!) {
         subscriptionDraftLineAdd(draftId: $draftId, input: $input) {
           draft { id }
+          lineAdded { id }
           userErrors { field message }
         }
       }
