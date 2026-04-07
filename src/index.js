@@ -535,8 +535,7 @@ app.post('/api/charge-instant', requireAuth, async (req, res) => {
     const activeContract = contracts.find(e => e.node.status === 'ACTIVE');
 
     let contractId;
-    // Use contract's own currency when reusing, store currency for new ones
-    const cur = activeContract ? (activeContract.node.currencyCode || storeCurrency) : storeCurrency;
+    const cur = storeCurrency;
 
     if (activeContract) {
       // 2a. Reuse existing contract — use its own currency
