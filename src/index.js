@@ -466,6 +466,7 @@ app.post('/api/charge-instant', requireAuth, async (req, res) => {
       input: {
         customerId,
         nextBillingDate: new Date().toISOString(),
+        currencyCode: cur,
         contract: {
           status: 'ACTIVE',
           paymentMethodId,
