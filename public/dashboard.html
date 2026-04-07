@@ -161,6 +161,7 @@ code{background:var(--s3);color:var(--sh);padding:2px 6px;border-radius:4px;font
       <div class="ni" onclick="nav('orders',this)"><span class="ni-icon">▤</span>Orders</div>
       <div class="ni" onclick="nav('analytics',this)"><span class="ni-icon">▲</span>Analytics</div>
       <div class="ni" onclick="nav('selling-plans',this)"><span class="ni-icon">◫</span>Selling Plans</div>
+      <div class="ni" onclick="nav('billing-history',this)"><span class="ni-icon">◉</span>Billing History</div>
       <div class="ni" onclick="nav('webhooks',this)"><span class="ni-icon">⌘</span>Webhooks</div>
     </nav>
     <div class="sidebar-bottom">
@@ -327,6 +328,17 @@ code{background:var(--s3);color:var(--sh);padding:2px 6px;border-radius:4px;font
         </div>
       </div>
 
+      <!-- BILLING HISTORY -->
+      <div class="page" id="page-billing-history">
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">Billing Attempts <span class="pill" id="billHistCount">0</span></div>
+            <button class="btn btn-ghost btn-sm" onclick="loadBillingHistory()">↻ Refresh</button>
+          </div>
+          <div class="tw"><table><thead><tr><th>Customer</th><th>Amount</th><th>Status</th><th>Order</th><th>Error</th><th>Date</th></tr></thead><tbody id="billHistTb"></tbody></table></div>
+        </div>
+      </div>
+
       <!-- ANALYTICS -->
       <div class="page" id="page-analytics">
         <div class="stats-row">
@@ -460,6 +472,33 @@ async function loadOrders() {
     renderOrds(orders);
     buildCharts();
   } catch(e) { toast('Orders: ' + e.message, 'e'); }
+}
+
+async function loadBillingHistory() {
+  const tb = document.getElementById('billHistTb');
+  tb.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text3)">Loading...</td></tr>';
+  try {
+    const d = await api('/api/billing-history');
+    if (!d.success) throw new Error(d.error);
+    document.getElementById('billHistCount').textContent = d.attempts.length;
+    if (!d.attempts.length) { tb.innerHTML = '<tr><td colspan="6" class="empty">No billing attempts yet</td></tr>'; return; }
+    tb.innerHTML = d.attempts.map(a => {
+      const statusColor = a.status === 'SUCCESS' ? 'g' : a.status === 'PENDING' ? 'a' : 'r';
+      const statusLabel = a.status === 'SUCCESS' ? '✅ Charged' : a.status === 'PENDING' ? '⏳ Pending' : '❌ ' + (a.status || 'Failed');
+      const error = a.errorCode ? `<span style="font-size:11px;color:var(--red);font-family:var(--mono)">${a.errorCode}</span>` : '—';
+      const order = a.order ? `<span style="color:var(--sh);font-family:var(--mono);font-size:12px">${a.order.name}</span>` : '—';
+      const amount = a.amount ? `<span style="color:var(--green);font-family:var(--mono)">${parseFloat(a.amount).toFixed(2)} ${a.currency||''}</span>` : '—';
+      const date = a.processedAt ? new Date(a.processedAt).toLocaleString() : '—';
+      return `<tr>
+        <td><div class="cn">${a.customerName||'—'}</div><div class="ce">${a.customerEmail||''}</div></td>
+        <td>${amount}</td>
+        <td><span class="tag ${statusColor}">${statusLabel}</span></td>
+        <td>${order}</td>
+        <td>${error}</td>
+        <td style="font-size:11px;color:var(--text2)">${date}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) { tb.innerHTML = `<tr><td colspan="6" style="color:var(--red);padding:16px">${e.message}</td></tr>`; }
 }
 
 async function loadSubs() {
@@ -725,8 +764,8 @@ function exportCSV(){
 }
 
 // NAV
-const titles={dashboard:'Dashboard',customers:'Customers',subscriptions:'Subscriptions',charge:'Charge Now',orders:'Orders',analytics:'Analytics','selling-plans':'Selling Plans',webhooks:'Webhooks'};
-const pageLoaders={'selling-plans':()=>loadSellingPlans(),webhooks:()=>loadWebhooks()};
+const titles={dashboard:'Dashboard',customers:'Customers',subscriptions:'Subscriptions',charge:'Charge Now',orders:'Orders',analytics:'Analytics','selling-plans':'Selling Plans',webhooks:'Webhooks','billing-history':'Billing History'};
+const pageLoaders={'selling-plans':()=>loadSellingPlans(),webhooks:()=>loadWebhooks(),'billing-history':()=>loadBillingHistory()};
 function nav(page,el){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');

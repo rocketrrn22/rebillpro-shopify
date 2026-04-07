@@ -407,6 +407,50 @@ app.post('/api/subscriptions/bill-all', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── API: BILLING HISTORY ────────────────────────────────────────
+app.get('/api/billing-history', requireAuth, async (req, res) => {
+  try {
+    const query = `
+      query {
+        subscriptionBillingAttempts(first: 100) {
+          edges {
+            node {
+              id
+              ready
+              errorCode
+              errorMessage
+              processedAt
+              order { id name totalPriceSet { shopMoney { amount currencyCode } } }
+              subscriptionContract {
+                customer { displayName email }
+                lines(first: 1) { edges { node { currentPrice { amount currencyCode } } } }
+              }
+            }
+          }
+        }
+      }
+    `;
+    const data = await gql(req.shop, req.token, query);
+    const attempts = (data.subscriptionBillingAttempts?.edges || []).map(e => {
+      const n = e.node;
+      const line = n.subscriptionContract?.lines?.edges?.[0]?.node;
+      const orderAmount = n.order?.totalPriceSet?.shopMoney;
+      return {
+        id: n.id,
+        status: n.errorCode ? n.errorCode : (n.ready ? 'SUCCESS' : 'PENDING'),
+        errorCode: n.errorCode || null,
+        processedAt: n.processedAt,
+        order: n.order ? { name: n.order.name } : null,
+        amount: orderAmount?.amount || line?.currentPrice?.amount || null,
+        currency: orderAmount?.currencyCode || line?.currentPrice?.currencyCode || null,
+        customerName: n.subscriptionContract?.customer?.displayName || '—',
+        customerEmail: n.subscriptionContract?.customer?.email || ''
+      };
+    });
+    res.json({ success: true, attempts });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── API: CANCEL SUBSCRIPTION ────────────────────────────────────
 app.post('/api/subscriptions/cancel', requireAuth, async (req, res) => {
   const { subscriptionContractId } = req.body;
