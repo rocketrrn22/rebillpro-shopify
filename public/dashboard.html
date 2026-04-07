@@ -233,12 +233,12 @@ code{background:var(--s3);color:var(--sh);padding:2px 6px;border-radius:4px;font
       <div class="page" id="page-charge">
         <div style="background:var(--s1);border:1px solid var(--border);border-radius:11px;padding:20px;margin-bottom:16px">
           <h3 style="font-size:14px;font-weight:600;margin-bottom:4px">⚡ Charge Customers</h3>
-          <p style="font-size:12px;color:var(--text2);margin-bottom:18px;line-height:1.5">Charge one customer or all customers with a saved card. Uses Shopify Payments — no third-party fees.</p>
+          <p style="font-size:12px;color:var(--text2);margin-bottom:18px;line-height:1.5">Instantly charge a customer's saved card. Customer must have purchased via a selling plan for their card to be saved.</p>
           <div class="fr" style="margin-bottom:12px">
-            <div class="fg"><label class="fl">Amount (cents, e.g. 2999 = $29.99)</label><input type="number" class="fi" id="cAmt" placeholder="2999"></div>
-            <div class="fg" style="max-width:120px"><label class="fl">Currency</label><select class="fi" id="cCur"><option value="USD">USD</option><option value="EUR">EUR</option><option value="GBP">GBP</option><option value="CAD">CAD</option></select></div>
+            <div class="fg"><label class="fl">Amount (€)</label><input type="number" class="fi" id="cAmt" placeholder="29.99" step="0.01" min="0.50"></div>
+            <div class="fg" style="max-width:120px"><label class="fl">Currency</label><select class="fi" id="cCur"><option value="EUR" selected>EUR</option><option value="USD">USD</option><option value="GBP">GBP</option><option value="CAD">CAD</option></select></div>
           </div>
-          <div class="fg" style="margin-bottom:12px"><label class="fl">Description</label><input type="text" class="fi" id="cNote" placeholder="Monthly subscription"></div>
+          <div class="fg" style="margin-bottom:12px"><label class="fl">Description</label><input type="text" class="fi" id="cNote" placeholder="Manual charge"></div>
           <div style="display:flex;gap:9px;margin-bottom:12px">
             <div id="t-all" style="flex:1;background:var(--sg);border:1px solid var(--sh);border-radius:8px;padding:12px;text-align:center;cursor:pointer" onclick="setT('all')">
               <div style="font-size:12px;font-weight:600;color:var(--sh)">All Customers</div>
@@ -261,8 +261,8 @@ code{background:var(--s3);color:var(--sh);padding:2px 6px;border-radius:4px;font
             </div>
           </div>
           <div id="chargeProgressWrap" style="display:none"><div class="pw"><div class="pr"><span id="pLbl">Charging...</span><span id="pCnt">0/0</span></div><div class="pt"><div class="pf" id="pBar" style="width:0%"></div></div></div></div>
-          <div class="info"><strong>How it works:</strong> One-time charges create a draft order invoice sent to the customer. Subscriptions create a Shopify subscription contract billed automatically on the set interval using the customer's saved Shopify Payments card.</div>
-          <button class="btn btn-sh btn-lg" id="execBtn" onclick="executeCharge()"><span id="execTxt">⚡ Execute</span></button>
+          <div class="info"><strong>Instant charge:</strong> Charges the customer's saved Shopify Payments card immediately — no email, no waiting. Only works for customers with a saved card (purchased via a selling plan).</div>
+          <button class="btn btn-sh btn-lg" id="execBtn" onclick="executeCharge()"><span id="execTxt">⚡ Charge Now</span></button>
         </div>
       </div>
 
@@ -595,31 +595,33 @@ function populatePicker() {
 }
 
 async function executeCharge() {
-  const amount=parseInt(document.getElementById('cAmt').value);
+  const amountStr=document.getElementById('cAmt').value;
+  const amountFloat=parseFloat(amountStr);
   const currency=document.getElementById('cCur').value;
-  const note=document.getElementById('cNote').value||'RebillPro charge';
-  if (!amount||amount<50) return toast('Enter valid amount (min 50 cents)','e');
+  const note=document.getElementById('cNote').value||'Manual charge';
+  if (!amountFloat||amountFloat<0.50) return toast('Enter valid amount (min €0.50)','e');
+  const amountCents=Math.round(amountFloat*100);
   const btn=document.getElementById('execBtn');
   document.getElementById('execTxt').innerHTML='<span class="spin"></span> Processing...';
   btn.disabled=true;
 
   if (target==='sub') {
     const custId=document.getElementById('custPick').value;
-    if (!custId){toast('Select a customer','e');document.getElementById('execTxt').textContent='⚡ Execute';btn.disabled=false;return;}
+    if (!custId){toast('Select a customer','e');document.getElementById('execTxt').textContent='⚡ Charge Now';btn.disabled=false;return;}
     const interval=document.getElementById('sInt').value;
     const count=parseInt(document.getElementById('sCnt').value)||1;
-    const r=await api('/api/subscriptions/create','POST',{customerId:custId,amount,currency,intervalUnit:interval,intervalCount:count,description:note});
+    const r=await api('/api/subscriptions/create','POST',{customerId:custId,amount:amountCents,currency,intervalUnit:interval,intervalCount:count,description:note});
     r.success?toast('✅ Subscription created!','s'):toast('Failed: '+r.error,'e');
     await loadSubs();
   } else if (target==='one') {
     const custId=document.getElementById('custPick').value;
-    if (!custId){toast('Select a customer','e');document.getElementById('execTxt').textContent='⚡ Execute';btn.disabled=false;return;}
-    const r=await api('/api/draft-order','POST',{customerId:custId,amount,currency,note});
-    r.success?toast('✅ Invoice sent to customer','s'):toast('Failed: '+r.error,'e');
+    if (!custId){toast('Select a customer','e');document.getElementById('execTxt').textContent='⚡ Charge Now';btn.disabled=false;return;}
+    const r=await api('/api/charge-instant','POST',{customerId:custId,amount:amountCents,currency,note});
+    r.success?toast('✅ Card charged instantly!','s'):toast('Failed: '+r.error,'e');
     await loadOrders();
   } else {
     const targets=customers.filter(c=>c.hasCard);
-    if (!targets.length){toast('No customers with saved cards','e');document.getElementById('execTxt').textContent='⚡ Execute';btn.disabled=false;return;}
+    if (!targets.length){toast('No customers with saved cards','e');document.getElementById('execTxt').textContent='⚡ Charge Now';btn.disabled=false;return;}
     document.getElementById('chargeProgressWrap').style.display='block';
     let ok=0,fail=0;
     for(let i=0;i<targets.length;i++){
@@ -627,15 +629,15 @@ async function executeCharge() {
       document.getElementById('pBar').style.width=pct+'%';
       document.getElementById('pCnt').textContent=`${i+1}/${targets.length}`;
       document.getElementById('pLbl').textContent=`Charging ${targets[i].displayName||targets[i].email}...`;
-      const r=await api('/api/draft-order','POST',{customerId:targets[i].id,amount,currency,note});
+      const r=await api('/api/charge-instant','POST',{customerId:targets[i].id,amount:amountCents,currency,note});
       r.success?ok++:fail++;
-      await new Promise(res=>setTimeout(res,300));
+      await new Promise(res=>setTimeout(res,500));
     }
     document.getElementById('chargeProgressWrap').style.display='none';
-    toast(`Bulk: ${ok} invoices sent, ${fail} failed`,ok>0?'s':'e');
+    toast(`Bulk: ${ok} charged, ${fail} failed`,ok>0?'s':'e');
     await loadOrders();
   }
-  document.getElementById('execTxt').textContent='⚡ Execute';
+  document.getElementById('execTxt').textContent='⚡ Charge Now';
   btn.disabled=false;
 }
 

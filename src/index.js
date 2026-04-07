@@ -417,6 +417,90 @@ app.post('/api/subscriptions/cancel', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── API: INSTANT CHARGE (uses saved card via subscription billing) ─
+app.post('/api/charge-instant', requireAuth, async (req, res) => {
+  const { customerId, amount, currency, note } = req.body;
+  try {
+    // 1. Get customer's saved payment method
+    const custData = await gql(req.shop, req.token, `
+      query($id: ID!) {
+        customer(id: $id) {
+          paymentMethods(first: 1) { edges { node { id } } }
+        }
+      }
+    `, { id: customerId });
+    if (!custData.customer.paymentMethods.edges.length) {
+      return res.status(400).json({ error: 'Customer has no saved payment method. They must purchase via a selling plan first.' });
+    }
+    const paymentMethodId = custData.customer.paymentMethods.edges[0].node.id;
+
+    // 2. Create a subscription contract with the custom amount
+    const createResult = await gql(req.shop, req.token, `
+      mutation($input: SubscriptionContractCreateInput!) {
+        subscriptionContractCreate(input: $input) {
+          draft { id }
+          userErrors { field message }
+        }
+      }
+    `, {
+      input: {
+        customerId,
+        nextBillingDate: new Date().toISOString(),
+        contract: {
+          status: 'ACTIVE',
+          paymentMethodId,
+          billingPolicy: { interval: 'MONTH', intervalCount: 1, minCycles: 1, maxCycles: 1 },
+          deliveryPolicy: { interval: 'MONTH', intervalCount: 1 },
+          note: note || 'RebillPro instant charge'
+        },
+        lineItems: [{
+          quantity: 1,
+          currentPrice: { amount: (amount / 100).toFixed(2), currencyCode: (currency || 'EUR').toUpperCase() },
+          title: note || 'Manual charge'
+        }]
+      }
+    });
+    if (createResult.subscriptionContractCreate.userErrors?.length) {
+      throw new Error(createResult.subscriptionContractCreate.userErrors[0].message);
+    }
+    const draftId = createResult.subscriptionContractCreate.draft.id;
+
+    // 3. Commit the draft to get the contract ID
+    const commitResult = await gql(req.shop, req.token, `
+      mutation($id: ID!) {
+        subscriptionDraftCommit(draftId: $id) {
+          contract { id }
+          userErrors { field message }
+        }
+      }
+    `, { id: draftId });
+    if (commitResult.subscriptionDraftCommit.userErrors?.length) {
+      throw new Error(commitResult.subscriptionDraftCommit.userErrors[0].message);
+    }
+    const contractId = commitResult.subscriptionDraftCommit.contract.id;
+
+    // 4. Immediately trigger a billing attempt
+    const key = crypto.randomBytes(16).toString('hex');
+    const billResult = await gql(req.shop, req.token, `
+      mutation($id: ID!, $key: String!) {
+        subscriptionBillingAttemptCreate(
+          subscriptionContractId: $id
+          subscriptionBillingAttemptInput: { idempotencyKey: $key }
+        ) {
+          subscriptionBillingAttempt { id ready errorMessage order { id name } }
+          userErrors { field message }
+        }
+      }
+    `, { id: contractId, key });
+    if (billResult.subscriptionBillingAttemptCreate.userErrors?.length) {
+      throw new Error(billResult.subscriptionBillingAttemptCreate.userErrors[0].message);
+    }
+    const attempt = billResult.subscriptionBillingAttemptCreate.subscriptionBillingAttempt;
+    if (attempt.errorMessage) throw new Error(attempt.errorMessage);
+    res.json({ success: true, attempt, contractId });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── API: DRAFT ORDER (manual one-time charge) ───────────────────
 app.post('/api/draft-order', requireAuth, async (req, res) => {
   const { customerId, amount, currency, note } = req.body;
