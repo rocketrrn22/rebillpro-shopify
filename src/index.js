@@ -517,7 +517,7 @@ app.post('/api/charge-instant', requireAuth, async (req, res) => {
   const priceStr = (amount / 100).toFixed(2);
   const title = note || 'Manual Charge';
   try {
-    // Use store currency (EUR) — must match shop base currency
+    // Fetch store currency for new contracts only
     const shopData = await rest(req.shop, req.token, 'shop.json');
     const storeCurrency = shopData.shop?.currency || 'EUR';
     // 1. Find customer's existing ACTIVE subscription contract (with its currency)
@@ -535,7 +535,8 @@ app.post('/api/charge-instant', requireAuth, async (req, res) => {
     const activeContract = contracts.find(e => e.node.status === 'ACTIVE');
 
     let contractId;
-    const cur = storeCurrency;
+    // Use contract's own currency when reusing, store currency for new ones
+    const cur = activeContract ? (activeContract.node.currencyCode || storeCurrency) : storeCurrency;
 
     if (activeContract) {
       // 2a. Reuse existing contract — use its own currency
