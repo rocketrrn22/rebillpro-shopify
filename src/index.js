@@ -417,9 +417,26 @@ app.post('/api/subscriptions/cancel', requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── HELPER: get or create a hidden "Manual Charge" product variant ─
+async function getManualChargeVariantId(shop, token) {
+  const data = await rest(shop, token, 'products.json?title=RebillPro+Manual+Charge&limit=1');
+  if (data.products?.length > 0) {
+    return `gid://shopify/ProductVariant/${data.products[0].variants[0].id}`;
+  }
+  const d = await rest(shop, token, 'products.json', 'POST', {
+    product: {
+      title: 'RebillPro Manual Charge',
+      status: 'draft',
+      variants: [{ price: '0.00', requires_shipping: false }]
+    }
+  });
+  return `gid://shopify/ProductVariant/${d.product.variants[0].id}`;
+}
+
 // ── API: INSTANT CHARGE (uses saved card via subscription billing) ─
 app.post('/api/charge-instant', requireAuth, async (req, res) => {
   const { customerId, amount, currency, note } = req.body;
+  const cur = (currency || 'EUR').toUpperCase();
   try {
     // 1. Get customer's saved payment method
     const custData = await gql(req.shop, req.token, `
@@ -434,7 +451,10 @@ app.post('/api/charge-instant', requireAuth, async (req, res) => {
     }
     const paymentMethodId = custData.customer.paymentMethods.edges[0].node.id;
 
-    // 2. Create a subscription contract with the custom amount
+    // 2. Get or create a dummy product variant (required by subscription line API)
+    const variantId = await getManualChargeVariantId(req.shop, req.token);
+
+    // 3. Create subscription contract draft (no lineItems here)
     const createResult = await gql(req.shop, req.token, `
       mutation($input: SubscriptionContractCreateInput!) {
         subscriptionContractCreate(input: $input) {
@@ -449,15 +469,11 @@ app.post('/api/charge-instant', requireAuth, async (req, res) => {
         contract: {
           status: 'ACTIVE',
           paymentMethodId,
+          currencyCode: cur,
           billingPolicy: { interval: 'MONTH', intervalCount: 1, minCycles: 1, maxCycles: 1 },
           deliveryPolicy: { interval: 'MONTH', intervalCount: 1 },
           note: note || 'RebillPro instant charge'
-        },
-        lineItems: [{
-          quantity: 1,
-          currentPrice: { amount: (amount / 100).toFixed(2), currencyCode: (currency || 'EUR').toUpperCase() },
-          title: note || 'Manual charge'
-        }]
+        }
       }
     });
     if (createResult.subscriptionContractCreate.userErrors?.length) {
@@ -465,7 +481,27 @@ app.post('/api/charge-instant', requireAuth, async (req, res) => {
     }
     const draftId = createResult.subscriptionContractCreate.draft.id;
 
-    // 3. Commit the draft to get the contract ID
+    // 4. Add line item to draft
+    const lineResult = await gql(req.shop, req.token, `
+      mutation($draftId: ID!, $input: SubscriptionDraftLineAddInput!) {
+        subscriptionDraftLineAdd(draftId: $draftId, input: $input) {
+          draft { id }
+          userErrors { field message }
+        }
+      }
+    `, {
+      draftId,
+      input: {
+        productVariantId: variantId,
+        quantity: 1,
+        currentPrice: { amount: (amount / 100).toFixed(2), currencyCode: cur }
+      }
+    });
+    if (lineResult.subscriptionDraftLineAdd.userErrors?.length) {
+      throw new Error(lineResult.subscriptionDraftLineAdd.userErrors[0].message);
+    }
+
+    // 5. Commit the draft to get the contract ID
     const commitResult = await gql(req.shop, req.token, `
       mutation($id: ID!) {
         subscriptionDraftCommit(draftId: $id) {
@@ -479,7 +515,7 @@ app.post('/api/charge-instant', requireAuth, async (req, res) => {
     }
     const contractId = commitResult.subscriptionDraftCommit.contract.id;
 
-    // 4. Immediately trigger a billing attempt
+    // 6. Immediately trigger a billing attempt
     const key = crypto.randomBytes(16).toString('hex');
     const billResult = await gql(req.shop, req.token, `
       mutation($id: ID!, $key: String!) {
