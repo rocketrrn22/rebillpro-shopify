@@ -410,20 +410,30 @@ app.post('/api/subscriptions/bill-all', requireAuth, async (req, res) => {
 // ── API: BILLING HISTORY ────────────────────────────────────────
 app.get('/api/billing-history', requireAuth, async (req, res) => {
   try {
+    // Fetch all subscription contracts and their billing attempts
     const query = `
       query {
-        subscriptionBillingAttempts(first: 100) {
+        subscriptionContracts(first: 50) {
           edges {
             node {
               id
-              ready
-              errorCode
-              errorMessage
-              processedAt
-              order { id name totalPriceSet { shopMoney { amount currencyCode } } }
-              subscriptionContract {
-                customer { displayName email }
-                lines(first: 1) { edges { node { currentPrice { amount currencyCode } } } }
+              customer { displayName email }
+              lines(first: 1) { edges { node { currentPrice { amount currencyCode } } } }
+              billingAttempts(first: 20) {
+                edges {
+                  node {
+                    id
+                    ready
+                    errorCode
+                    errorMessage
+                    createdAt
+                    order {
+                      name
+                      totalPriceSet { shopMoney { amount currencyCode } }
+                      displayFinancialStatus
+                    }
+                  }
+                }
               }
             }
           }
@@ -431,22 +441,34 @@ app.get('/api/billing-history', requireAuth, async (req, res) => {
       }
     `;
     const data = await gql(req.shop, req.token, query);
-    const attempts = (data.subscriptionBillingAttempts?.edges || []).map(e => {
-      const n = e.node;
-      const line = n.subscriptionContract?.lines?.edges?.[0]?.node;
-      const orderAmount = n.order?.totalPriceSet?.shopMoney;
-      return {
-        id: n.id,
-        status: n.errorCode ? n.errorCode : (n.ready ? 'SUCCESS' : 'PENDING'),
-        errorCode: n.errorCode || null,
-        processedAt: n.processedAt,
-        order: n.order ? { name: n.order.name } : null,
-        amount: orderAmount?.amount || line?.currentPrice?.amount || null,
-        currency: orderAmount?.currencyCode || line?.currentPrice?.currencyCode || null,
-        customerName: n.subscriptionContract?.customer?.displayName || '—',
-        customerEmail: n.subscriptionContract?.customer?.email || ''
-      };
-    });
+    const attempts = [];
+    for (const ce of (data.subscriptionContracts?.edges || [])) {
+      const contract = ce.node;
+      const line = contract.lines?.edges?.[0]?.node;
+      for (const ae of (contract.billingAttempts?.edges || [])) {
+        const a = ae.node;
+        const orderMoney = a.order?.totalPriceSet?.shopMoney;
+        let status;
+        if (a.errorCode) status = a.errorCode;
+        else if (a.ready && a.order) status = 'SUCCESS';
+        else if (a.ready && !a.order) status = 'FAILED';
+        else status = 'PENDING';
+        attempts.push({
+          id: a.id,
+          status,
+          errorCode: a.errorCode || null,
+          errorMessage: a.errorMessage || null,
+          createdAt: a.createdAt,
+          order: a.order ? { name: a.order.name, paymentStatus: a.order.displayFinancialStatus } : null,
+          amount: orderMoney?.amount || line?.currentPrice?.amount || null,
+          currency: orderMoney?.currencyCode || line?.currentPrice?.currencyCode || null,
+          customerName: contract.customer?.displayName || '—',
+          customerEmail: contract.customer?.email || ''
+        });
+      }
+    }
+    // Sort newest first
+    attempts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     res.json({ success: true, attempts });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

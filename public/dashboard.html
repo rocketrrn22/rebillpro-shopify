@@ -483,12 +483,17 @@ async function loadBillingHistory() {
     document.getElementById('billHistCount').textContent = d.attempts.length;
     if (!d.attempts.length) { tb.innerHTML = '<tr><td colspan="6" class="empty">No billing attempts yet</td></tr>'; return; }
     tb.innerHTML = d.attempts.map(a => {
-      const statusColor = a.status === 'SUCCESS' ? 'g' : a.status === 'PENDING' ? 'a' : 'r';
-      const statusLabel = a.status === 'SUCCESS' ? '✅ Charged' : a.status === 'PENDING' ? '⏳ Pending' : '❌ ' + (a.status || 'Failed');
-      const error = a.errorCode ? `<span style="font-size:11px;color:var(--red);font-family:var(--mono)">${a.errorCode}</span>` : '—';
-      const order = a.order ? `<span style="color:var(--sh);font-family:var(--mono);font-size:12px">${a.order.name}</span>` : '—';
+      let statusColor, statusLabel;
+      if (a.status === 'SUCCESS') { statusColor='g'; statusLabel='✅ Charged'; }
+      else if (a.status === 'PENDING') { statusColor='a'; statusLabel='⏳ Pending'; }
+      else if (a.status === 'INSUFFICIENT_FUNDS') { statusColor='r'; statusLabel='❌ Insufficient Funds'; }
+      else if (a.status === 'EXPIRED_PAYMENT_METHOD') { statusColor='r'; statusLabel='❌ Card Expired'; }
+      else if (a.status === 'FAILED') { statusColor='r'; statusLabel='❌ Failed'; }
+      else { statusColor='r'; statusLabel='❌ ' + a.status; }
+      const error = a.errorMessage ? `<span style="font-size:11px;color:var(--red)">${a.errorMessage}</span>` : '—';
+      const order = a.order ? `<span style="color:var(--sh);font-family:var(--mono);font-size:12px">${a.order.name}</span><br><span style="font-size:10px;color:var(--text3)">${a.order.paymentStatus||''}</span>` : '—';
       const amount = a.amount ? `<span style="color:var(--green);font-family:var(--mono)">${parseFloat(a.amount).toFixed(2)} ${a.currency||''}</span>` : '—';
-      const date = a.processedAt ? new Date(a.processedAt).toLocaleString() : '—';
+      const date = a.createdAt ? new Date(a.createdAt).toLocaleString() : '—';
       return `<tr>
         <td><div class="cn">${a.customerName||'—'}</div><div class="ce">${a.customerEmail||''}</div></td>
         <td>${amount}</td>
