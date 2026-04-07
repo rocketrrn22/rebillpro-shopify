@@ -469,7 +469,6 @@ app.post('/api/charge-instant', requireAuth, async (req, res) => {
         contract: {
           status: 'ACTIVE',
           paymentMethodId,
-          currencyCode: cur,
           billingPolicy: { interval: 'MONTH', intervalCount: 1, minCycles: 1, maxCycles: 1 },
           deliveryPolicy: { interval: 'MONTH', intervalCount: 1 },
           note: note || 'RebillPro instant charge'
