@@ -511,140 +511,77 @@ async function getManualChargeVariantId(shop, token, title, price) {
   return `gid://shopify/ProductVariant/${variantId}`;
 }
 
-// ── API: INSTANT CHARGE (reuse existing subscription contract) ─────
+// ── API: INSTANT CHARGE (always fresh EUR contract) ─────────────────
 app.post('/api/charge-instant', requireAuth, async (req, res) => {
   const { customerId, amount, note } = req.body;
   const priceStr = (amount / 100).toFixed(2);
   const title = note || 'Manual Charge';
   try {
-    // Fetch store currency for new contracts only
-    const shopData = await rest(req.shop, req.token, 'shop.json');
-    const storeCurrency = shopData.shop?.currency || 'EUR';
-    // 1. Find customer's existing ACTIVE subscription contract (with its currency)
-    const contractData = await gql(req.shop, req.token, `
-      query($id: ID!) {
-        customer(id: $id) {
-          subscriptionContracts(first: 1) {
-            edges { node { id status currencyCode lines(first:1) { edges { node { id } } } } }
-          }
-        }
-      }
+    // 1. Get customer's saved payment method
+    const custData = await gql(req.shop, req.token, `
+      query($id: ID!) { customer(id: $id) { paymentMethods(first: 1) { edges { node { id } } } } }
     `, { id: customerId });
-
-    const contracts = contractData.customer?.subscriptionContracts?.edges || [];
-    const activeContract = contracts.find(e => e.node.status === 'ACTIVE');
-
-    let contractId;
-    const cur = storeCurrency;
-
-    if (activeContract) {
-      // 2a. Reuse existing contract — use its own currency
-      contractId = activeContract.node.id;
-      const lineId = activeContract.node.lines.edges[0]?.node?.id;
-
-      // Update product title for the order
-      await getManualChargeVariantId(req.shop, req.token, title, priceStr);
-
-      // Open a draft on the existing contract and update the line price
-      const draftResult = await gql(req.shop, req.token, `
-        mutation($id: ID!) {
-          subscriptionContractUpdate(contractId: $id) {
-            draft { id }
-            userErrors { field message }
-          }
-        }
-      `, { id: contractId });
-      if (draftResult.subscriptionContractUpdate.userErrors?.length) {
-        throw new Error(draftResult.subscriptionContractUpdate.userErrors[0].message);
-      }
-      const draftId = draftResult.subscriptionContractUpdate.draft.id;
-
-      if (lineId) {
-        await gql(req.shop, req.token, `
-          mutation($draftId: ID!, $lineId: ID!, $input: SubscriptionLineUpdateInput!) {
-            subscriptionDraftLineUpdate(draftId: $draftId, lineId: $lineId, input: $input) {
-              draft { id }
-              userErrors { field message }
-            }
-          }
-        `, { draftId, lineId, input: { currentPrice: priceStr } });
-      }
-
-      // Commit the draft
-      const commitResult = await gql(req.shop, req.token, `
-        mutation($id: ID!) {
-          subscriptionDraftCommit(draftId: $id) {
-            contract { id }
-            userErrors { field message }
-          }
-        }
-      `, { id: draftId });
-      if (commitResult.subscriptionDraftCommit.userErrors?.length) {
-        throw new Error(commitResult.subscriptionDraftCommit.userErrors[0].message);
-      }
-
-    } else {
-      // 2b. No existing contract — check payment method and create one
-      const custData = await gql(req.shop, req.token, `
-        query($id: ID!) { customer(id: $id) { paymentMethods(first: 1) { edges { node { id } } } } }
-      `, { id: customerId });
-      if (!custData.customer.paymentMethods.edges.length) {
-        return res.status(400).json({ error: 'Customer has no saved payment method. They must purchase via a selling plan first.' });
-      }
-      const paymentMethodId = custData.customer.paymentMethods.edges[0].node.id;
-      const variantId = await getManualChargeVariantId(req.shop, req.token, title, priceStr);
-
-      const createResult = await gql(req.shop, req.token, `
-        mutation($input: SubscriptionContractCreateInput!) {
-          subscriptionContractCreate(input: $input) {
-            draft { id }
-            userErrors { field message }
-          }
-        }
-      `, {
-        input: {
-          customerId,
-          nextBillingDate: new Date().toISOString(),
-          currencyCode: cur,
-          contract: {
-            status: 'ACTIVE',
-            paymentMethodId,
-            billingPolicy: { interval: 'MONTH', intervalCount: 1, minCycles: 1 },
-            deliveryPolicy: { interval: 'MONTH', intervalCount: 1 },
-            deliveryPrice: '0.00',
-            note: title
-          }
-        }
-      });
-      if (createResult.subscriptionContractCreate.userErrors?.length) {
-        throw new Error(createResult.subscriptionContractCreate.userErrors[0].message);
-      }
-      const draftId = createResult.subscriptionContractCreate.draft.id;
-
-      await gql(req.shop, req.token, `
-        mutation($draftId: ID!, $input: SubscriptionLineInput!) {
-          subscriptionDraftLineAdd(draftId: $draftId, input: $input) {
-            draft { id }
-            userErrors { field message }
-          }
-        }
-      `, { draftId, input: { productVariantId: variantId, quantity: 1, currentPrice: priceStr } });
-
-      const commitResult = await gql(req.shop, req.token, `
-        mutation($id: ID!) {
-          subscriptionDraftCommit(draftId: $id) {
-            contract { id }
-            userErrors { field message }
-          }
-        }
-      `, { id: draftId });
-      if (commitResult.subscriptionDraftCommit.userErrors?.length) {
-        throw new Error(commitResult.subscriptionDraftCommit.userErrors[0].message);
-      }
-      contractId = commitResult.subscriptionDraftCommit.contract.id;
+    if (!custData.customer.paymentMethods.edges.length) {
+      return res.status(400).json({ error: 'Customer has no saved payment method. They must purchase via a selling plan first.' });
     }
+    const paymentMethodId = custData.customer.paymentMethods.edges[0].node.id;
 
-    // 3. Trigger billing attempt on the contract
+    // 2. Update product title/price for order display
+    const variantId = await getManualChargeVariantId(req.shop, req.token, title, priceStr);
+
+    // 3. Create fresh EUR contract
+    const createResult = await gql(req.shop, req.token, `
+      mutation($input: SubscriptionContractCreateInput!) {
+        subscriptionContractCreate(input: $input) {
+          draft { id }
+          userErrors { field message }
+        }
+      }
+    `, {
+      input: {
+        customerId,
+        nextBillingDate: new Date().toISOString(),
+        currencyCode: 'EUR',
+        contract: {
+          status: 'ACTIVE',
+          paymentMethodId,
+          billingPolicy: { interval: 'MONTH', intervalCount: 1, minCycles: 1, maxCycles: 1 },
+          deliveryPolicy: { interval: 'MONTH', intervalCount: 1 },
+          deliveryPrice: '0.00',
+          note: title
+        }
+      }
+    });
+    if (createResult.subscriptionContractCreate.userErrors?.length) {
+      throw new Error(createResult.subscriptionContractCreate.userErrors[0].message);
+    }
+    const draftId = createResult.subscriptionContractCreate.draft.id;
+
+    // 4. Add line item
+    await gql(req.shop, req.token, `
+      mutation($draftId: ID!, $input: SubscriptionLineInput!) {
+        subscriptionDraftLineAdd(draftId: $draftId, input: $input) {
+          draft { id }
+          userErrors { field message }
+        }
+      }
+    `, { draftId, input: { productVariantId: variantId, quantity: 1, currentPrice: priceStr } });
+
+    // 5. Commit draft
+    const commitResult = await gql(req.shop, req.token, `
+      mutation($id: ID!) {
+        subscriptionDraftCommit(draftId: $id) {
+          contract { id }
+          userErrors { field message }
+        }
+      }
+    `, { id: draftId });
+    if (commitResult.subscriptionDraftCommit.userErrors?.length) {
+      throw new Error(commitResult.subscriptionDraftCommit.userErrors[0].message);
+    }
+    const contractId = commitResult.subscriptionDraftCommit.contract.id;
+
+    // 6. Trigger billing attempt
     const key = crypto.randomBytes(16).toString('hex');
     const billResult = await gql(req.shop, req.token, `
       mutation($id: ID!, $key: String!) {
