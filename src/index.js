@@ -515,10 +515,11 @@ async function getManualChargeVariantId(shop, token, title, price) {
 app.post('/api/charge-instant', requireAuth, async (req, res) => {
   const { customerId, amount, note } = req.body;
   const priceStr = (amount / 100).toFixed(2);
-
-  // Will be determined from the customer's existing contract currency
   const title = note || 'Manual Charge';
   try {
+    // Use store currency (EUR) — must match shop base currency
+    const shopData = await rest(req.shop, req.token, 'shop.json');
+    const storeCurrency = shopData.shop?.currency || 'EUR';
     // 1. Find customer's existing ACTIVE subscription contract (with its currency)
     const contractData = await gql(req.shop, req.token, `
       query($id: ID!) {
@@ -534,7 +535,7 @@ app.post('/api/charge-instant', requireAuth, async (req, res) => {
     const activeContract = contracts.find(e => e.node.status === 'ACTIVE');
 
     let contractId;
-    const cur = activeContract ? (activeContract.node.currencyCode || 'EUR') : 'EUR';
+    const cur = storeCurrency;
 
     if (activeContract) {
       // 2a. Reuse existing contract — use its own currency
